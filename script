@@ -92,11 +92,11 @@
             transform: translate(-50%, -50%);
             background: rgba(10, 10, 42, 0.95);
             border: 4px solid #d4af37;
-            padding: 25px;
+            padding: 15px;
             display: none;
             text-align: center;
-            width: 80%;
-            max-width: 800px;
+            width: 70%;
+            max-width: 600px;
             box-shadow: 0 0 30px rgba(212, 175, 55, 0.7);
             z-index: 100;
             border-radius: 15px;
@@ -105,14 +105,14 @@
         .stand-option {
             display: inline-block;
             width: 30%;
-            margin: 10px;
-            padding: 20px;
+            margin: 8px;
+            padding: 15px;
             border: 3px solid #d4af37;
             background: rgba(20, 20, 60, 0.9);
             cursor: pointer;
             transition: all 0.3s;
             vertical-align: top;
-            min-height: 250px;
+            min-height: 180px;
             color: #d4af37;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
@@ -126,36 +126,36 @@
         }
 
         .stand-emoji {
-            font-size: 60px;
-            margin-bottom: 15px;
+            font-size: 50px;
+            margin-bottom: 10px;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
         .stand-name {
-            font-size: 22px;
-            margin-bottom: 15px;
+            font-size: 18px;
+            margin-bottom: 10px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .stand-desc {
-            font-size: 14px;
-            margin-bottom: 15px;
+            font-size: 12px;
+            margin-bottom: 10px;
             color: #ccc;
             line-height: 1.4;
         }
 
         .stand-status {
-            font-size: 13px;
+            font-size: 11px;
             color: #ff6b6b;
             font-weight: bold;
         }
 
         #skipConfirmation {
             display: none;
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 15px;
+            padding: 10px;
             border-top: 2px solid #444;
         }
 
@@ -339,13 +339,13 @@
         /* ===== BOSS ALERT STYLES ===== */
         #bossAlert {
             position: absolute;
-            top: 50%;
+            top: 30%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(255, 0, 0, 0.85);
-            padding: 30px 50px;
+            padding: 20px 30px;
             border-radius: 15px;
-            font-size: 40px;
+            font-size: 28px;
             font-weight: bold;
             z-index: 100;
             display: none;
@@ -787,6 +787,27 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
         }
 
+        /* ===== HAMON AURA STYLES ===== */
+        .hamon-aura {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,0,0.3) 0%, rgba(255,255,0,0) 70%);
+            pointer-events: none;
+            z-index: 5;
+            animation: hamonPulse 2s infinite;
+        }
+
+        @keyframes hamonPulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.4; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+        }
+
         /* ===== RESPONSIVE DESIGN ===== */
         @media (max-width: 768px) {
             #ui {
@@ -800,8 +821,8 @@
             }
             
             #bossAlert {
-                font-size: 30px;
-                padding: 20px 30px;
+                font-size: 24px;
+                padding: 15px 25px;
             }
         }
     </style>
@@ -937,6 +958,9 @@
     <!-- ===== VAMPIRE AURA ===== -->
     <div class="vampire-aura" id="vampireAura" style="display: none;"></div>
 
+    <!-- ===== HAMON AURA ===== -->
+    <div class="hamon-aura" id="hamonAura" style="display: none;"></div>
+
     <script>
         // ===== GAME CONFIGURATION =====
         const CONFIG = {
@@ -962,7 +986,8 @@
                 requiemDropChance: 0.02, // 2% chance from bosses
                 standDiskDropChance: 0.10, // 10% chance from Dio's servants
                 saintRibCageDropChance: 0.05, // 5% chance from Funny Valentine
-                vampireMaskDropChance: 0.05 // 5% chance from vampires
+                vampireMaskDropChance: 0.05, // 5% chance from vampires
+                diaryDropChance: 0.01 // 1% chance from Dio and Pucci
             },
             
             // Boss settings
@@ -1020,7 +1045,10 @@
                 // Vampire state
                 isVampire: false,
                 vampireRegenTimer: 0,
-                lifeLeech: 0
+                lifeLeech: 0,
+                // Hamon state
+                isHamon: false,
+                hamonDamageBoost: 1.0
             },
             inDowntime: false,
             downtimeTimer: 0,
@@ -1048,6 +1076,8 @@
                 requiemArrows: 0,
                 saintRibCage: 0,
                 vampireMask: 0,
+                diary: 0,
+                rokkakaka: 0,
                 stands: [] // Stored stands
             },
             quests: {
@@ -1057,7 +1087,9 @@
             // Smart stand selection
             standSelectionHistory: [],
             // Enemy targeting
-            targetedEnemy: null
+            targetedEnemy: null,
+            // D4C clone tracking
+            d4cClones: []
         };
 
         // ===== GAME DATA =====
@@ -1081,11 +1113,13 @@
         // ===== ENEMY TYPES =====
         const enemyTypes = [
             { name: 'Stand User', color: '#ff5555', size: 22, speed: 1.2, maxHP: 45, standPowerDrain: 0.05, unlockPart: 1,
-              description: 'Basic Stand user. Slow but persistent.', canDropDisk: false },
+              description: 'Basic Stand user. Slow but persistent.', canDropDisk: false, isUndead: false },
             { name: 'Zombie', color: '#aa55ff', size: 20, speed: 1.8, maxHP: 35, standPowerDrain: 0.08, unlockPart: 1,
-              description: 'Reanimated corpse with enhanced abilities.', canDropDisk: false },
+              description: 'Reanimated corpse with enhanced abilities.', canDropDisk: false, isUndead: true },
             { name: 'Dio\'s Servant', color: '#ff00ff', size: 28, speed: 1.3, maxHP: 55, standPowerDrain: 0.25, unlockPart: 5,
-              description: 'Vampire servant of Dio.', canDropDisk: true, isVampire: true }
+              description: 'Vampire servant of Dio.', canDropDisk: true, isUndead: true },
+            { name: 'Gun User', color: '#888888', size: 24, speed: 1.5, maxHP: 40, standPowerDrain: 0.1, unlockPart: 3,
+              description: 'Uses firearms to attack from range.', canDropDisk: false, isUndead: false, shoots: true, damage: 4 }
         ];
 
         // ===== BOSS TYPES =====
@@ -1105,7 +1139,8 @@
                 standName: 'The World',
                 standColor: '#ffff00',
                 standSize: 30,
-                isVampire: true
+                isVampire: true,
+                isUndead: true
             },
             { 
                 name: 'Kars', 
@@ -1119,7 +1154,8 @@
                 message: 'I HAVE BECOME THE ULTIMATE BEING!',
                 abilities: ['lightBlade', 'regeneration', 'shapeShift'],
                 hasStand: false,
-                isVampire: true
+                isVampire: true,
+                isUndead: true
             },
             { 
                 name: 'Funny Valentine', 
@@ -1134,8 +1170,28 @@
                 abilities: ['dimensionHop', 'loveTrain', 'cloneSummon'],
                 hasStand: true,
                 standName: 'Dirty Deeds Done Dirt Cheap',
+                standColor: '#89CFF0',
+                standSize: 35,
+                isVampire: false,
+                isUndead: false
+            },
+            { 
+                name: 'Enrico Pucci', 
+                color: '#ffffff', 
+                size: 26, 
+                speed: 1.1, 
+                maxHP: 620, 
+                standPowerDrain: 0.45, 
+                unlockPart: 20,
+                description: 'Priest with Whitesnake and later C-Moon.',
+                message: 'I WILL ATTAIN HEAVEN!',
+                abilities: ['discCreation', 'memoryManipulation', 'gravityInversion'],
+                hasStand: true,
+                standName: 'Whitesnake',
                 standColor: '#ffffff',
-                standSize: 35
+                standSize: 32,
+                isVampire: false,
+                isUndead: false
             }
         ];
 
@@ -1148,6 +1204,15 @@
                 type: 'kill',
                 requirement: 100,
                 reward: 'Tusk Act 1',
+                active: false
+            },
+            {
+                id: 'c_moon',
+                name: 'C-Moon Evolution',
+                description: 'Obtain a diary from Dio or Pucci to evolve Whitesnake',
+                type: 'item',
+                requirement: 1,
+                reward: 'C-Moon',
                 active: false
             }
         ];
@@ -1263,11 +1328,11 @@
                     description: 'The flow of calamity itself, bringing misfortune to pursuers',
                     abilities: [
                         {
-                            name: 'CALAMITY',
+                            name: 'CALAMITY FIELD',
                             key: '1',
                             duration: 120,
                             cooldown: 400,
-                            description: 'Creates a calamity field that damages enemies who approach',
+                            description: 'Creates a field that damages enemies who approach',
                             status: 'Area denial',
                             effect: function() {
                                 createCalamityField(gameState.player.x, gameState.player.y, 200);
@@ -1275,25 +1340,20 @@
                             }
                         },
                         {
-                            name: 'PURSUIT DENIAL',
+                            name: 'RANDOM CALAMITY',
                             key: '2',
                             duration: 180,
                             cooldown: 500,
-                            description: 'Enemies who pursue you take continuous damage',
-                            status: 'Passive damage',
+                            description: 'Triggers random calamity effects on all enemies',
+                            status: 'Random effects',
                             effect: function() {
-                                gameState.activeAbilities.push({
-                                    id: 'pursuit_denial_' + Date.now(),
-                                    duration: 180,
-                                    elapsed: 0,
-                                    type: 'pursuit_denial'
-                                });
-                                unlockAchievement("Pursuit Denial Activated!");
+                                triggerRandomCalamity();
+                                unlockAchievement("Random Calamity Activated!");
                             }
                         }
                     ],
                     effect: function() {
-                        gameState.player.bulletColor = '#8a2be2';
+                        gameState.player.bulletColor = '#000000';
                         gameState.player.damage += 4;
                         gameState.player.bulletSize = 6;
                         gameState.player.standType = 'Wonder of U';
@@ -1302,7 +1362,7 @@
                         gameState.currentStand = this;
                         unlockAchievement("Wonder of U! Calamity Personified!");
                     },
-                    status: '+4 Damage, Calamity Field, Pursuit Denial'
+                    status: '+4 Damage, Calamity Field, Random Calamity'
                 },
                 {
                     name: 'Dirty Deeds Done Dirt Cheap',
@@ -1317,9 +1377,13 @@
                             description: 'Teleports to a random location',
                             status: 'Escape ability',
                             effect: function() {
-                                gameState.player.x += Math.random() * 200 - 100;
-                                gameState.player.y += Math.random() * 200 - 100;
-                                unlockAchievement("Dimension Hopping!");
+                                // Prevent spam by checking cooldown
+                                if (!gameState.abilityCooldowns['d4c_hop'] || gameState.abilityCooldowns['d4c_hop'] <= 0) {
+                                    gameState.player.x += Math.random() * 200 - 100;
+                                    gameState.player.y += Math.random() * 200 - 100;
+                                    gameState.abilityCooldowns['d4c_hop'] = 300;
+                                    unlockAchievement("Dimension Hopping!");
+                                }
                             }
                         },
                         {
@@ -1330,13 +1394,15 @@
                             description: 'Summons a temporary clone to fight alongside you',
                             status: 'Summon ally',
                             effect: function() {
-                                summonD4CClone();
-                                unlockAchievement("Clone Summoned!");
+                                if (gameState.d4cClones.length < 3) { // Limit clones to prevent spam
+                                    summonD4CClone();
+                                    unlockAchievement("Clone Summoned!");
+                                }
                             }
                         }
                     ],
                     effect: function() {
-                        gameState.player.bulletColor = '#ffffff';
+                        gameState.player.bulletColor = '#89CFF0';
                         gameState.player.damage += 5;
                         gameState.player.bulletSize = 7;
                         gameState.player.standType = 'D4C';
@@ -1370,34 +1436,31 @@
                             }
                         },
                         {
-                            name: 'MEMORY MANIPULATION',
+                            name: 'ACID SPRAY',
                             key: '2',
                             duration: 120,
                             cooldown: 400,
-                            description: 'Slows all enemies and reduces their damage',
-                            status: 'Crowd control',
+                            description: 'Sprays acid in a cone, damaging and slowing enemies',
+                            status: 'Cone attack',
                             effect: function() {
-                                gameState.activeAbilities.push({
-                                    id: 'memory_manipulation_' + Date.now(),
-                                    duration: 120,
-                                    elapsed: 0,
-                                    type: 'memory_manipulation'
-                                });
-                                unlockAchievement("Memory Manipulation Activated!");
+                                sprayAcid();
+                                unlockAchievement("Acid Spray Activated!");
                             }
                         }
                     ],
                     effect: function() {
-                        gameState.player.bulletColor = '#00ffff';
+                        gameState.player.bulletColor = '#ffffff';
                         gameState.player.damage += 4;
                         gameState.player.bulletSize = 6;
                         gameState.player.standType = 'Whitesnake';
                         gameState.player.canRequiem = true;
                         gameState.player.standActive = true;
                         gameState.currentStand = this;
+                        // Start C-Moon quest
+                        addQuest('c_moon');
                         unlockAchievement("Whitesnake! Memory Manipulation!");
                     },
-                    status: '+4 Damage, Disc Creation, Memory Manipulation'
+                    status: '+4 Damage, Disc Creation, Acid Spray'
                 }
             ];
 
@@ -1416,18 +1479,28 @@
                 {
                     name: 'Hamon Training',
                     emoji: '☀️',
-                    description: 'Increase movement speed by 1',
-                    effect: function() { gameState.player.speed += 1; },
-                    status: '+1 Speed'
+                    description: 'Gain Hamon abilities with yellow aura and bonus damage to undead',
+                    effect: function() { 
+                        if (!gameState.player.isVampire) {
+                            gameState.player.isHamon = true;
+                            gameState.player.hamonDamageBoost = 1.5;
+                            document.getElementById('hamonAura').style.display = 'block';
+                            document.getElementById('vampireAura').style.display = 'none';
+                        }
+                    },
+                    status: 'Hamon Aura, +50% damage to undead'
                 },
                 {
                     name: 'Vampiric Essence',
                     emoji: '🦇',
                     description: 'Gain 1.5% HP regeneration and life leech',
                     effect: function() { 
-                        gameState.player.isVampire = true;
-                        gameState.player.lifeLeech = 0.1;
-                        document.getElementById('vampireAura').style.display = 'block';
+                        if (!gameState.player.isHamon) {
+                            gameState.player.isVampire = true;
+                            gameState.player.lifeLeech = 0.1;
+                            document.getElementById('vampireAura').style.display = 'block';
+                            document.getElementById('hamonAura').style.display = 'none';
+                        }
                     },
                     status: 'Vampire Transformation'
                 }
@@ -1436,11 +1509,12 @@
 
         // ===== VAMPIRE MASK SYSTEM =====
         function useVampireMask() {
-            if (gameState.inventory.vampireMask > 0) {
+            if (gameState.inventory.vampireMask > 0 && !gameState.player.isHamon) {
                 gameState.player.isVampire = true;
                 gameState.player.lifeLeech = 0.1;
                 gameState.inventory.vampireMask--;
                 document.getElementById('vampireAura').style.display = 'block';
+                document.getElementById('hamonAura').style.display = 'none';
                 unlockAchievement("Vampire Transformation!");
                 updateInventoryDisplay();
             }
@@ -1473,6 +1547,39 @@
                     gameState.enemies.push(boss);
                     unlockAchievement("Enemy Transformed into Boss!");
                 }
+            }
+        }
+
+        // ===== HAMON EFFECTS =====
+        function updateHamonEffects() {
+            if (gameState.player.isHamon) {
+                // Apply damage boost to undead enemies
+                gameState.enemies.forEach(enemy => {
+                    if (enemy.isUndead) {
+                        // This will be applied in damage calculations
+                    }
+                });
+            }
+        }
+
+        // ===== ROKKAKAKA FRUIT =====
+        function useRokkakaka() {
+            if (gameState.inventory.rokkakaka > 0) {
+                // Wipe all stands and passives
+                gameState.player.standActive = false;
+                gameState.currentStand = null;
+                playerAbilities = [];
+                playerPassives = [];
+                playerStands = [];
+                gameState.keyToAbility = {};
+                gameState.player.isVampire = false;
+                gameState.player.isHamon = false;
+                document.getElementById('vampireAura').style.display = 'none';
+                document.getElementById('hamonAura').style.display = 'none';
+                
+                gameState.inventory.rokkakaka--;
+                unlockAchievement("Rokkakaka Used! All abilities reset!");
+                updateInventoryDisplay();
             }
         }
 
@@ -1549,6 +1656,8 @@
             
             if (quest.type === 'kill') {
                 quest.progress += amount;
+            } else if (quest.type === 'item') {
+                quest.progress = gameState.inventory.diary;
             }
             
             if (quest.progress >= quest.requirement) {
@@ -1648,6 +1757,33 @@
                 inventoryList.appendChild(maskItem);
             }
             
+            // Diary
+            if (gameState.inventory.diary > 0) {
+                const diaryItem = document.createElement('div');
+                diaryItem.className = 'inventory-item';
+                diaryItem.innerHTML = '📖';
+                diaryItem.title = `Diary x${gameState.inventory.diary}`;
+                const count = document.createElement('div');
+                count.className = 'item-count';
+                count.textContent = gameState.inventory.diary;
+                diaryItem.appendChild(count);
+                inventoryList.appendChild(diaryItem);
+            }
+            
+            // Rokkakaka
+            if (gameState.inventory.rokkakaka > 0) {
+                const rokkakakaItem = document.createElement('div');
+                rokkakakaItem.className = 'inventory-item';
+                rokkakakaItem.innerHTML = '🍎';
+                rokkakakaItem.title = `Rokkakaka Fruit x${gameState.inventory.rokkakaka}`;
+                rokkakakaItem.onclick = () => useRokkakaka();
+                const count = document.createElement('div');
+                count.className = 'item-count';
+                count.textContent = gameState.inventory.rokkakaka;
+                rokkakakaItem.appendChild(count);
+                inventoryList.appendChild(rokkakakaItem);
+            }
+            
             if (inventoryList.children.length === 0) {
                 inventoryList.innerHTML = '<div>Inventory is empty</div>';
             }
@@ -1694,6 +1830,7 @@
                 this.standY = this.y;
                 this.standActive = this.hasStand || false;
                 this.targetAngle = 0;
+                this.isImmortal = false; // Fix for immortal HP bug
                 
                 // Boss specific properties
                 if (this.isBoss) {
@@ -1702,6 +1839,14 @@
             }
             
             takeDamage(damage, sourceX, sourceY) {
+                // Fix immortal HP bug - check if already dead
+                if (this.hp <= 0) return true;
+                
+                // Apply Hamon damage boost if player has Hamon and enemy is undead
+                if (gameState.player.isHamon && this.isUndead) {
+                    damage *= gameState.player.hamonDamageBoost;
+                }
+                
                 this.hp -= damage;
                 gameState.player.totalDamage += damage;
                 
@@ -1713,6 +1858,11 @@
                     if (Math.random() < CONFIG.game.requiemDropChance) {
                         gameState.inventory.requiemArrows++;
                         unlockAchievement("Requiem Arrow Acquired!");
+                    }
+                    if ((this.name === 'DIO' || this.name === 'Enrico Pucci') && Math.random() < CONFIG.game.diaryDropChance) {
+                        gameState.inventory.diary++;
+                        updateQuestProgress('c_moon');
+                        unlockAchievement("Diary Acquired!");
                     }
                 }
                 
@@ -1726,6 +1876,12 @@
                 if (this.hp <= 0 && this.canDropDisk && Math.random() < CONFIG.game.standDiskDropChance) {
                     gameState.inventory.standDisks++;
                     unlockAchievement("Stand Disk Acquired!");
+                }
+                
+                // Rokkakaka drop chance
+                if (this.hp <= 0 && Math.random() < 0.01) {
+                    gameState.inventory.rokkakaka++;
+                    unlockAchievement("Rokkakaka Fruit Acquired!");
                 }
                 
                 return this.hp <= 0;
@@ -1765,13 +1921,15 @@
                     this.shootTimer++;
                     if (this.shootTimer >= 120) {
                         let angle = Math.atan2(gameState.player.y - this.y, gameState.player.x - this.x);
-                        gameState.bullets.push(new Bullet(
+                        let bullet = new Bullet(
                             this.x, this.y, 
                             Math.cos(angle) * 5, 
                             Math.sin(angle) * 5, 
                             this.damage || 3, 
                             true
-                        ));
+                        );
+                        bullet.color = '#888888'; // Grey bullets for gun users
+                        gameState.bullets.push(bullet);
                         this.shootTimer = 0;
                     }
                 }
@@ -1797,13 +1955,8 @@
                 // Apply ability effects
                 switch(ability) {
                     case 'timeStop':
-                        // Temporarily freeze player and bullets
-                        gameState.activeAbilities.push({
-                            id: 'timeStop_' + Date.now(),
-                            duration: 60, // 1 second
-                            elapsed: 0,
-                            type: 'timeStop'
-                        });
+                        // Activate time stop with visuals
+                        activateTimeStop(180, true); // 3 seconds, from boss
                         break;
                     case 'knifeThrow':
                         for (let i = 0; i < 8; i++) {
@@ -1822,7 +1975,7 @@
                     case 'vampiricDrain':
                         // Drain stand power from player
                         gameState.standPower -= 20;
-                        this.hp += 30;
+                        this.hp = Math.min(this.maxHP, this.hp + 30); // Fix: Don't exceed max HP
                         break;
                     case 'lightBlade':
                         // Create a blade projectile
@@ -1842,6 +1995,27 @@
                         // Teleport to a new location
                         this.x += Math.random() * 200 - 100;
                         this.y += Math.random() * 200 - 100;
+                        break;
+                    case 'cloneSummon':
+                        // Summon a clone (limited to prevent spam)
+                        if (gameState.enemies.length < 10) {
+                            const cloneType = Object.assign({}, this);
+                            cloneType.maxHP = this.maxHP * 0.5;
+                            cloneType.isBoss = false;
+                            const clone = new Enemy(cloneType, this.x + Math.random() * 100 - 50, this.y + Math.random() * 100 - 50);
+                            gameState.enemies.push(clone);
+                        }
+                        break;
+                    case 'discCreation':
+                        // Create a stand disc (visual effect only for boss)
+                        createBloodEffect(this.x, this.y, 20);
+                        break;
+                    case 'memoryManipulation':
+                        // Slow player temporarily
+                        gameState.player.speed *= 0.5;
+                        setTimeout(() => {
+                            gameState.player.speed /= 0.5;
+                        }, 3000);
                         break;
                 }
             }
@@ -1865,6 +2039,18 @@
                     ctx.beginPath();
                     ctx.arc(standScreenX, standScreenY, this.standSize || 25, 0, Math.PI * 2);
                     ctx.fill();
+                    
+                    // Draw two arms for the stand
+                    ctx.strokeStyle = this.standColor || '#ffffff';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    // Left arm
+                    ctx.moveTo(standScreenX, standScreenY);
+                    ctx.lineTo(standScreenX - 20, standScreenY - 15);
+                    // Right arm
+                    ctx.moveTo(standScreenX, standScreenY);
+                    ctx.lineTo(standScreenX + 20, standScreenY - 15);
+                    ctx.stroke();
                     
                     // Stand name for bosses
                     if (this.isBoss) {
@@ -1913,11 +2099,24 @@
                 this.isEnemyBullet = isEnemyBullet;
                 this.color = isEnemyBullet ? '#ff5555' : gameState.player.bulletColor;
                 this.enemiesHit = [];
+                this.trailTimer = 0;
             }
             
             update() {
                 this.x += this.dx;
                 this.y += this.dy;
+                
+                // Create trail effect
+                this.trailTimer++;
+                if (this.trailTimer >= 3) {
+                    gameState.bulletTrails.push({
+                        x: this.x,
+                        y: this.y,
+                        color: this.color,
+                        life: 10
+                    });
+                    this.trailTimer = 0;
+                }
             }
             
             draw() {
@@ -1971,7 +2170,7 @@
         }
 
         // ===== TIME STOP MECHANICS =====
-        function activateTimeStop(duration) {
+        function activateTimeStop(duration, fromBoss = false) {
             gameState.timeStopActive = true;
             gameState.timeStopTimer = 0;
             gameState.timeStopDuration = duration;
@@ -1979,6 +2178,10 @@
             // Visual effects
             document.getElementById('timeStopOverlay').style.display = 'block';
             document.getElementById('timeStopText').style.display = 'block';
+            
+            if (fromBoss) {
+                document.getElementById('timeStopText').textContent = "THE WORLD! TIME STOP!";
+            }
             
             // Play time stop sound (conceptual)
             unlockAchievement("TIME STOP ACTIVATED!");
@@ -1990,7 +2193,9 @@
                 
                 // Update time stop text with countdown
                 const timeLeft = Math.ceil((gameState.timeStopDuration - gameState.timeStopTimer) / 60);
-                document.getElementById('timeStopText').textContent = `TIME STOP: ${timeLeft}s`;
+                if (document.getElementById('timeStopText').textContent !== "THE WORLD! TIME STOP!") {
+                    document.getElementById('timeStopText').textContent = `TIME STOP: ${timeLeft}s`;
+                }
                 
                 if (gameState.timeStopTimer >= gameState.timeStopDuration) {
                     gameState.timeStopActive = false;
@@ -2043,13 +2248,23 @@
                     let angle = Math.atan2(targetY - gameState.player.standY, targetX - gameState.player.standX);
                     let spread = (Math.random() - 0.5) * 0.5;
                     
-                    gameState.bullets.push(new Bullet(
+                    let bullet = new Bullet(
                         gameState.player.standX, 
                         gameState.player.standY, 
                         Math.cos(angle + spread) * 15, 
                         Math.sin(angle + spread) * 15, 
                         gameState.player.damage * 0.7
-                    ));
+                    );
+                    
+                    // Add trail effect to barrage bullets
+                    gameState.bulletTrails.push({
+                        x: bullet.x,
+                        y: bullet.y,
+                        color: gameState.player.bulletColor,
+                        life: 8
+                    });
+                    
+                    gameState.bullets.push(bullet);
                 }
                 
                 if (gameState.player.barrageTimer <= 0) {
@@ -2117,13 +2332,71 @@
             });
         }
 
+        function triggerRandomCalamity() {
+            const effects = [
+                'damage',
+                'slow',
+                'confusion',
+                'knockback'
+            ];
+            
+            gameState.enemies.forEach(enemy => {
+                const effect = effects[Math.floor(Math.random() * effects.length)];
+                
+                switch(effect) {
+                    case 'damage':
+                        enemy.takeDamage(10, enemy.x, enemy.y);
+                        break;
+                    case 'slow':
+                        enemy.speed *= 0.5;
+                        setTimeout(() => {
+                            enemy.speed /= 0.5;
+                        }, 3000);
+                        break;
+                    case 'confusion':
+                        // Reverse movement direction temporarily
+                        const originalSpeed = enemy.speed;
+                        enemy.speed = -enemy.speed;
+                        setTimeout(() => {
+                            enemy.speed = originalSpeed;
+                        }, 2000);
+                        break;
+                    case 'knockback':
+                        const dx = enemy.x - gameState.player.x;
+                        const dy = enemy.y - gameState.player.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            enemy.x += (dx / dist) * 50;
+                            enemy.y += (dy / dist) * 50;
+                        }
+                        break;
+                }
+            });
+        }
+
+        function sprayAcid() {
+            // Create acid spray in a cone
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.atan2(gameState.mouseY - canvas.height / 2, gameState.mouseX - canvas.width / 2) - 0.5) + (i * 0.125);
+                const bullet = new Bullet(
+                    gameState.player.x,
+                    gameState.player.y,
+                    Math.cos(angle) * 8,
+                    Math.sin(angle) * 8,
+                    gameState.player.damage * 0.7
+                );
+                bullet.color = '#00ff00';
+                gameState.bullets.push(bullet);
+            }
+        }
+
         function summonD4CClone() {
             // Create a temporary clone that fights alongside the player
             const clone = {
                 x: gameState.player.x + Math.random() * 100 - 50,
                 y: gameState.player.y + Math.random() * 100 - 50,
                 size: 20,
-                color: '#ffffff',
+                color: '#89CFF0',
                 life: 180, // 3 seconds
                 shootTimer: 0,
                 update: function() {
@@ -2188,13 +2461,51 @@
                 }
             };
             
-            gameState.activeAbilities.push({
-                id: 'd4c_clone_' + Date.now(),
-                duration: 180,
-                elapsed: 0,
-                type: 'd4c_clone',
-                clone: clone
-            });
+            gameState.d4cClones.push(clone);
+        }
+
+        function updateD4CClones() {
+            for (let i = gameState.d4cClones.length - 1; i >= 0; i--) {
+                if (!gameState.d4cClones[i].update()) {
+                    gameState.d4cClones.splice(i, 1);
+                }
+            }
+        }
+
+        // ===== WONDER OF U AUTO ATTACK =====
+        function updateWonderOfU() {
+            if (gameState.player.standType === 'Wonder of U' && gameState.player.standActive) {
+                // Auto-attack nearest enemy
+                if (gameState.targetedEnemy && gameState.player.fireTimer <= 0) {
+                    const dx = gameState.targetedEnemy.x - gameState.player.standX;
+                    const dy = gameState.targetedEnemy.y - gameState.player.standY;
+                    const angle = Math.atan2(dy, dx);
+                    
+                    const bullet = new Bullet(
+                        gameState.player.standX,
+                        gameState.player.standY,
+                        Math.cos(angle) * 10,
+                        Math.sin(angle) * 10,
+                        gameState.player.damage * 0.8
+                    );
+                    bullet.color = '#000000'; // Black bullets for Wonder of U
+                    gameState.bullets.push(bullet);
+                    
+                    gameState.player.fireTimer = gameState.player.fireRate * 2; // Slower auto-attack
+                }
+                
+                // Hunt down enemies (move stand toward enemies)
+                if (gameState.targetedEnemy) {
+                    const dx = gameState.targetedEnemy.x - gameState.player.standX;
+                    const dy = gameState.targetedEnemy.y - gameState.player.standY;
+                    const dist = Math.hypot(dx, dy);
+                    
+                    if (dist > 0 && dist < 300) { // Only hunt if within range
+                        gameState.player.standX += (dx / dist) * 4;
+                        gameState.player.standY += (dy / dist) * 4;
+                    }
+                }
+            }
         }
 
         // ===== GAME LOOP FUNCTIONS =====
@@ -2219,6 +2530,9 @@
             updateBarrage();
             updateTargeting();
             updateVampireEffects();
+            updateHamonEffects();
+            updateD4CClones();
+            updateWonderOfU();
             
             // Update player stand position
             if (gameState.player.standActive && !gameState.targetedEnemy) {
@@ -2346,13 +2660,25 @@
             
             for (let i = 0; i < gameState.player.bulletCount; i++) {
                 let spread = (i - (gameState.player.bulletCount - 1) / 2) * 0.2;
-                gameState.bullets.push(new Bullet(
+                let bullet = new Bullet(
                     gameState.player.x, 
                     gameState.player.y, 
                     Math.cos(angle + spread) * gameState.player.bulletSpeed, 
                     Math.sin(angle + spread) * gameState.player.bulletSpeed, 
                     gameState.player.damage
-                ));
+                );
+                
+                // Add trail to first bullet
+                if (i === 0) {
+                    gameState.bulletTrails.push({
+                        x: bullet.x,
+                        y: bullet.y,
+                        color: gameState.player.bulletColor,
+                        life: 10
+                    });
+                }
+                
+                gameState.bullets.push(bullet);
             }
         }
 
@@ -2477,6 +2803,32 @@
                 ctx.arc(standScreenX, standScreenY, 30, 0, Math.PI * 2);
                 ctx.fill();
                 
+                // Draw two arms for the stand with trails
+                ctx.strokeStyle = gameState.player.bulletColor;
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                // Left arm
+                ctx.moveTo(standScreenX, standScreenY);
+                ctx.lineTo(standScreenX - 25, standScreenY - 20);
+                // Right arm
+                ctx.moveTo(standScreenX, standScreenY);
+                ctx.lineTo(standScreenX + 25, standScreenY - 20);
+                ctx.stroke();
+                
+                // Add trail effects to stand arms during barrage
+                if (gameState.player.barrageActive) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(standScreenX, standScreenY);
+                    ctx.lineTo(standScreenX - 25, standScreenY - 20);
+                    ctx.moveTo(standScreenX, standScreenY);
+                    ctx.lineTo(standScreenX + 25, standScreenY - 20);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
                 // Stand name
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 14px Arial';
@@ -2535,6 +2887,9 @@
             // Draw blood effects
             renderBloodEffects();
             
+            // Draw D4C clones
+            gameState.d4cClones.forEach(clone => clone.draw());
+            
             // Draw player
             drawPlayer();
             
@@ -2571,6 +2926,7 @@
         function spawnPart() {
             gameState.enemies = [];
             gameState.bossAbilities = [];
+            gameState.d4cClones = []; // Clear D4C clones between parts
             
             const isBossPart = gameState.part % CONFIG.boss.bossPartInterval === 0;
             
@@ -2941,7 +3297,7 @@
             }
             
             // Quest panel toggle
-            if (e.key === '/') {
+            if (e.key === 'q') {
                 toggleQuestPanel();
             }
             
@@ -2969,14 +3325,13 @@
             
             // Barrage activation (hold E)
             if (e.key === 'e' && gameState.player.standActive && !gameState.inDowntime && !gameState.gameOver) {
-                if (gameState.currentStand && gameState.currentStand.abilities.some(a => a.name.includes('BARRAGE'))) {
-                    gameState.player.barrageActive = true;
-                    gameState.player.barrageTimer = 60;
-                }
+                // All stands have barrage now
+                gameState.player.barrageActive = true;
+                gameState.player.barrageTimer = 60;
             }
             
             // Shooting with Q key
-            if (e.key === 'q' && !gameState.inDowntime && !gameState.gameOver) {
+            if (e.key === ' ' && !gameState.inDowntime && !gameState.gameOver) {
                 gameState.shootKeyPressed = true;
             }
         });
@@ -2984,7 +3339,7 @@
         document.addEventListener('keyup', e => {
             gameState.keys[e.key] = false;
             
-            if (e.key === 'q') {
+            if (e.key === ' ') {
                 gameState.shootKeyPressed = false;
             }
             
