@@ -1,0 +1,3154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JoJo's Bizarre Adventure: Stand Battle</title>
+    <style>
+        /* ===== GAME STYLES ===== */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+            font-family: "Arial", sans-serif;
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a4a 100%);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: radial-gradient(circle at center, #1a1a4a 0%, #0a0a2a 100%);
+        }
+
+        /* ===== UI STYLES ===== */
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(10, 10, 42, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            border: 3px solid #d4af37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        #keybinds, #passives {
+            margin-top: 10px;
+        }
+
+        .stand-key {
+            display: inline-block;
+            border: 2px solid #d4af37;
+            padding: 8px 12px;
+            margin: 5px;
+            background: rgba(20, 20, 60, 0.8);
+            cursor: default;
+            color: #d4af37;
+            font-weight: bold;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+        }
+
+        #status {
+            margin-top: 10px;
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 8px 15px;
+            font-size: 16px;
+            margin-top: 10px;
+            background: linear-gradient(to bottom, #2a2a6a, #1a1a4a);
+            color: #d4af37;
+            border: 2px solid #d4af37;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #3a3a7a, #2a2a6a);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        #skipDowntimeBtn {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            display: none;
+        }
+
+        /* ===== STAND POPUP STYLES ===== */
+        #standPopup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 42, 0.95);
+            border: 4px solid #d4af37;
+            padding: 25px;
+            display: none;
+            text-align: center;
+            width: 80%;
+            max-width: 800px;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.7);
+            z-index: 100;
+            border-radius: 15px;
+        }
+
+        .stand-option {
+            display: inline-block;
+            width: 30%;
+            margin: 10px;
+            padding: 20px;
+            border: 3px solid #d4af37;
+            background: rgba(20, 20, 60, 0.9);
+            cursor: pointer;
+            transition: all 0.3s;
+            vertical-align: top;
+            min-height: 250px;
+            color: #d4af37;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .stand-option:hover {
+            border-color: #ff6b6b;
+            background: rgba(30, 30, 80, 0.95);
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .stand-emoji {
+            font-size: 60px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .stand-name {
+            font-size: 22px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stand-desc {
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        .stand-status {
+            font-size: 13px;
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        #skipConfirmation {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border-top: 2px solid #444;
+        }
+
+        /* ===== ENEMY INFO STYLES ===== */
+        #enemyInfo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(10, 10, 42, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            max-width: 300px;
+            z-index: 20;
+            border: 3px solid #ff6b6b;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+        }
+
+        #enemyInfo h3 {
+            margin-top: 0;
+            color: #ff6b6b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #enemyStats {
+            margin: 10px 0;
+            color: #ccc;
+        }
+
+        #enemyDesc {
+            color: #aaa;
+            font-style: italic;
+        }
+
+        /* ===== STAND POWER BAR STYLES ===== */
+        #standPowerBar {
+            width: 250px;
+            height: 25px;
+            background: #1a1a4a;
+            border: 2px solid #d4af37;
+            margin-top: 10px;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #standPowerFill {
+            height: 100%;
+            background: linear-gradient(to right, #ff6b6b, #d4af37, #4ecdc4);
+            width: 100%;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+
+        #standPowerText {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            line-height: 25px;
+            font-size: 14px;
+            text-shadow: 1px 1px 1px #000;
+            font-weight: bold;
+        }
+
+        /* ===== PART INFO STYLES ===== */
+        #partInfo {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 42, 0.85);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 20px;
+            z-index: 10;
+            display: none;
+            border: 3px solid #d4af37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            color: #d4af37;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* ===== LEADERBOARD STYLES ===== */
+        #leaderboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(10, 10, 42, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 250px;
+            z-index: 5;
+            border: 3px solid #d4af37;
+            display: none;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+        }
+
+        #leaderboard h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #d4af37;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        #showLeaderboard {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        /* ===== DEATH SCREEN STYLES ===== */
+        #deathScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: #d4af37;
+            text-align: center;
+        }
+
+        /* ===== COMPACT UI STYLES ===== */
+        #uiToggle {
+            margin-top: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            color: #d4af37;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        #abilitiesPassives {
+            max-height: 200px;
+            overflow-y: auto;
+            transition: max-height 0.3s;
+        }
+
+        #abilitiesPassives.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        #compactKeybinds {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .compact-key {
+            display: inline-block;
+            border: 2px solid #d4af37;
+            padding: 4px 8px;
+            margin: 3px;
+            background: rgba(20, 20, 60, 0.8);
+            cursor: default;
+            font-size: 12px;
+            color: #d4af37;
+            border-radius: 4px;
+        }
+
+        /* ===== BOSS ALERT STYLES ===== */
+        #bossAlert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.85);
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 40px;
+            font-weight: bold;
+            z-index: 100;
+            display: none;
+            text-align: center;
+            border: 4px solid #ff0000;
+            box-shadow: 0 0 40px #ff0000;
+            backdrop-filter: blur(10px);
+            animation: pulse 1.5s infinite;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* ===== BOSS ABILITY STYLES ===== */
+        .boss-ability {
+            position: absolute;
+            color: #ff5555;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 50;
+            pointer-events: none;
+            text-shadow: 0 0 5px #000;
+            text-transform: uppercase;
+        }
+
+        /* ===== TOOLTIP STYLES ===== */
+        #tooltip {
+            position: absolute;
+            background: rgba(10, 10, 42, 0.9);
+            padding: 8px 15px;
+            border-radius: 5px;
+            display: none;
+            z-index: 30;
+            pointer-events: none;
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            max-width: 300px;
+        }
+
+        /* ===== STAND EFFECT STYLES ===== */
+        .bullet-trail {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .pierce-effect {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ffaa00;
+            pointer-events: none;
+            z-index: 5;
+            animation: pierce 0.3s forwards;
+        }
+
+        @keyframes pierce {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        /* ===== STAND SLASH EFFECT STYLES ===== */
+        .stand-slash {
+            position: absolute;
+            width: 120px;
+            height: 12px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent);
+            pointer-events: none;
+            z-index: 25;
+            animation: standSlash 0.4s forwards;
+            border-radius: 6px;
+            box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff;
+        }
+
+        @keyframes standSlash {
+            0% { transform: scaleX(0); opacity: 1; }
+            50% { transform: scaleX(1); opacity: 1; }
+            100% { transform: scaleX(1); opacity: 0; }
+        }
+
+        /* ===== HEALING ORB STYLES ===== */
+        .healing-orb {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #00ff00;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 0 0 15px #00ff00;
+            animation: orbFloat 3s infinite alternate;
+        }
+
+        @keyframes orbFloat {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-15px); }
+        }
+
+        /* ===== STAND AOE EFFECT ===== */
+        .stand-aoe {
+            position: absolute;
+            border: 3px solid #ff0000;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 20;
+            animation: aoeExpand 1s forwards;
+        }
+
+        @keyframes aoeExpand {
+            0% { transform: scale(0); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        /* ===== JOJO TEXT STYLES ===== */
+        .jojo-text {
+            font-family: "Arial Black", "Impact", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .gold-text {
+            color: #d4af37;
+            text-shadow: 2px 2px 0 #000, 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .red-text {
+            color: #ff6b6b;
+            text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .blue-text {
+            color: #4ecdc4;
+            text-shadow: 2px 2px 0 #000, 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        /* ===== ACHIEVEMENT STYLES ===== */
+        .achievement {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 42, 0.95);
+            border: 3px solid #d4af37;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 250;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.7);
+            animation: achievementPop 0.5s forwards;
+        }
+
+        @keyframes achievementPop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            70% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* ===== TIME STOP EFFECTS ===== */
+        .time-stop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 255, 0.2);
+            z-index: 40;
+            pointer-events: none;
+            display: none;
+        }
+
+        .time-stop-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ffffff;
+            text-shadow: 0 0 10px #0000ff, 0 0 20px #0000ff;
+            z-index: 45;
+            display: none;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* ===== REQUIEM POPUP STYLES ===== */
+        #requiemPopup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 42, 0.95);
+            border: 4px solid #ffd700;
+            padding: 25px;
+            display: none;
+            text-align: center;
+            width: 60%;
+            max-width: 600px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+            z-index: 110;
+            border-radius: 15px;
+        }
+
+        .requiem-option {
+            display: inline-block;
+            width: 45%;
+            margin: 10px;
+            padding: 20px;
+            border: 3px solid #ffd700;
+            background: rgba(30, 30, 80, 0.9);
+            cursor: pointer;
+            transition: all 0.3s;
+            vertical-align: top;
+            min-height: 150px;
+            color: #ffd700;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .requiem-option:hover {
+            border-color: #ffffff;
+            background: rgba(40, 40, 100, 0.95);
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7);
+        }
+
+        /* ===== BLOOD EFFECT STYLES ===== */
+        .blood-effect {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            animation: bloodSplash 0.5s forwards;
+        }
+
+        @keyframes bloodSplash {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* ===== QUEST UI STYLES ===== */
+        #questButton {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 10, 42, 0.85);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #questPanel {
+            position: absolute;
+            bottom: 60px;
+            left: 10px;
+            background: rgba(10, 10, 42, 0.95);
+            border: 3px solid #d4af37;
+            padding: 15px;
+            border-radius: 10px;
+            width: 300px;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .quest-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .quest-progress {
+            height: 10px;
+            background: #1a1a4a;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .quest-progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #ff6b6b, #d4af37);
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+
+        /* ===== INVENTORY UI STYLES ===== */
+        #inventoryButton {
+            position: absolute;
+            bottom: 10px;
+            left: 60px;
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 10, 42, 0.85);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #inventoryPanel {
+            position: absolute;
+            bottom: 60px;
+            left: 60px;
+            background: rgba(10, 10, 42, 0.95);
+            border: 3px solid #d4af37;
+            padding: 15px;
+            border-radius: 10px;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .inventory-item {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #d4af37;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 60px;
+            font-size: 24px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .inventory-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .item-count {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 12px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* ===== ACHIEVEMENT BUTTON STYLES ===== */
+        #achievementButton {
+            position: absolute;
+            bottom: 10px;
+            left: 110px;
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 10, 42, 0.85);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #achievementPanel {
+            position: absolute;
+            bottom: 60px;
+            left: 110px;
+            background: rgba(10, 10, 42, 0.95);
+            border: 3px solid #d4af37;
+            padding: 15px;
+            border-radius: 10px;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .achievement-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 3px solid #d4af37;
+        }
+
+        /* ===== VAMPIRE AURA STYLES ===== */
+        .vampire-aura {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 5;
+            animation: auraPulse 2s infinite;
+        }
+
+        @keyframes auraPulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.4; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            #ui {
+                max-width: 250px;
+                padding: 10px;
+            }
+            
+            .stand-option {
+                width: 45%;
+                min-height: 200px;
+            }
+            
+            #bossAlert {
+                font-size: 30px;
+                padding: 20px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== GAME CANVAS ===== -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- ===== MAIN UI ===== -->
+    <div id="ui">
+        <div class="jojo-text">Stand Power: <span id="standPower">100</span>/100</div>
+        <div id="standPowerBar">
+            <div id="standPowerFill"></div>
+            <div id="standPowerText">100%</div>
+        </div>
+        <div class="jojo-text">Part: <span id="part">1</span></div>
+        
+        <!-- UI Toggle -->
+        <div id="uiToggle" onclick="toggleUISection()">▼ Hide Stand Abilities</div>
+        
+        <!-- Compact Keybinds -->
+        <div id="compactKeybinds"></div>
+        
+        <!-- Abilities/Passives Section -->
+        <div id="abilitiesPassives">
+            <div class="jojo-text">Stand Abilities:</div>
+            <div id="keybinds"></div>
+            <div class="jojo-text">Passive Skills:</div>
+            <div id="passives"></div>
+        </div>
+        
+        <div id="status"></div>
+        <button id="skipDowntimeBtn" onclick="skipDowntime()">Skip Downtime (Space)</button>
+    </div>
+
+    <!-- ===== PART INFO ===== -->
+    <div id="partInfo" class="jojo-text">Part <span id="partNum">1</span></div>
+
+    <!-- ===== STAND POPUP ===== -->
+    <div id="standPopup">
+        <h2 class="jojo-text gold-text">Choose a Stand</h2>
+        <div id="standOptions"></div>
+        <div id="skipConfirmation">
+            <p>Are you sure you want to skip? You won't get another stand this part.</p>
+            <button onclick="confirmSkip()">Yes, Skip</button>
+            <button onclick="cancelSkip()">Cancel</button>
+        </div>
+        <button onclick="showSkipConfirmation()">Skip Stand Selection</button>
+    </div>
+
+    <!-- ===== REQUIEM POPUP ===== -->
+    <div id="requiemPopup">
+        <h2 class="jojo-text gold-text">Requiem Arrow Acquired!</h2>
+        <p>You've obtained a rare Requiem Arrow from a boss! Choose how to use it:</p>
+        <div id="requiemOptions">
+            <div class="requiem-option" onclick="useRequiemNow()">
+                <h3>Use Now</h3>
+                <p>Immediately evolve your current Stand to Requiem form</p>
+            </div>
+            <div class="requiem-option" onclick="saveRequiem()">
+                <h3>Save for Later</h3>
+                <p>Store the arrow in your inventory for future use</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ENEMY INFO ===== -->
+    <div id="enemyInfo">
+        <h3 id="enemyName" class="jojo-text">Enemy Stand</h3>
+        <div id="enemyStats"></div>
+        <div id="enemyDesc"></div>
+    </div>
+
+    <!-- ===== LEADERBOARD ===== -->
+    <div id="leaderboard">
+        <h3 class="jojo-text gold-text">High Scores</h3>
+        <div id="leaderboardEntries"></div>
+    </div>
+
+    <!-- ===== BOSS ALERT ===== -->
+    <div id="bossAlert" class="jojo-text"></div>
+
+    <!-- ===== LEADERBOARD BUTTON ===== -->
+    <button id="showLeaderboard" onclick="toggleLeaderboard()">Show Leaderboard</button>
+
+    <!-- ===== QUEST BUTTON ===== -->
+    <div id="questButton" onclick="toggleQuestPanel()">?</div>
+    <div id="questPanel">
+        <h3 class="jojo-text gold-text">Active Quests</h3>
+        <div id="questList"></div>
+    </div>
+
+    <!-- ===== INVENTORY BUTTON ===== -->
+    <div id="inventoryButton" onclick="toggleInventoryPanel()">I</div>
+    <div id="inventoryPanel">
+        <h3 class="jojo-text gold-text">Inventory</h3>
+        <div id="inventoryList"></div>
+    </div>
+
+    <!-- ===== ACHIEVEMENT BUTTON ===== -->
+    <div id="achievementButton" onclick="toggleAchievementPanel()">🏆</div>
+    <div id="achievementPanel">
+        <h3 class="jojo-text gold-text">Achievements</h3>
+        <div id="achievementList"></div>
+    </div>
+
+    <!-- ===== DEATH SCREEN ===== -->
+    <div id="deathScreen">
+        <h1 class="jojo-text red-text">YOU DIED</h1>
+        <h2 class="jojo-text gold-text">Joestar Family Message:</h2>
+        <p id="deathTip" class="jojo-text"></p>
+        <p class="jojo-text">Part Reached: <span id="finalPart">1</span></p>
+        <p class="jojo-text">Final Score: <span id="finalScore">0</span></p>
+        <div>
+            <button onclick="restartGame()">Restart Game</button>
+            <button onclick="showLeaderboard()">View Leaderboard</button>
+        </div>
+    </div>
+
+    <!-- ===== TOOLTIP ===== -->
+    <div id="tooltip"></div>
+
+    <!-- ===== ACHIEVEMENT POPUP ===== -->
+    <div class="achievement" id="achievementPopup">
+        <h3 class="jojo-text gold-text">Achievement Unlocked!</h3>
+        <p id="achievementText"></p>
+    </div>
+
+    <!-- ===== TIME STOP EFFECTS ===== -->
+    <div class="time-stop-overlay" id="timeStopOverlay"></div>
+    <div class="time-stop-text" id="timeStopText">TIME STOP</div>
+
+    <!-- ===== VAMPIRE AURA ===== -->
+    <div class="vampire-aura" id="vampireAura" style="display: none;"></div>
+
+    <script>
+        // ===== GAME CONFIGURATION =====
+        const CONFIG = {
+            // Player settings
+            player: {
+                size: 25,
+                speed: 6,
+                bulletCount: 1,
+                bulletSpeed: 12,
+                damage: 8,
+                maxStandPower: 100,
+                fireRate: 8 // frames between shots
+            },
+            
+            // Game settings
+            game: {
+                downtimeDuration: 25 * 60, // 25 seconds at 60fps
+                damageMultiplierPerPart: 0.02, // 2% per part
+                standPowerRegenPerPart: 15,
+                maxEnemiesPerPart: 50,
+                healingOrbSpawnChance: 0.15, // 15% chance when enemy dies
+                healingOrbHealAmount: 20,
+                requiemDropChance: 0.02, // 2% chance from bosses
+                standDiskDropChance: 0.10, // 10% chance from Dio's servants
+                saintRibCageDropChance: 0.05, // 5% chance from Funny Valentine
+                vampireMaskDropChance: 0.05 // 5% chance from vampires
+            },
+            
+            // Boss settings
+            boss: {
+                abilityCooldown: 150, // 2.5 seconds at 60fps
+                bossPartInterval: 5 // Boss every 5 parts
+            },
+            
+            // Stand settings
+            stands: {
+                abilityStandPart: 3,
+                passiveStandPart: 2,
+                specialStandChance: 0.3, // 30% chance for special stand
+                legendaryChance: 0.08 // 8% chance for legendary stand
+            }
+        };
+
+        // ===== GAME VARIABLES =====
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let gameState = {
+            standPower: 100,
+            part: 1,
+            enemies: [],
+            bullets: [],
+            bulletTrails: [],
+            healingOrbs: [],
+            bloodEffects: [],
+            player: {
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                size: CONFIG.player.size,
+                speed: CONFIG.player.speed,
+                bulletCount: CONFIG.player.bulletCount,
+                bulletSpeed: CONFIG.player.bulletSpeed,
+                damage: CONFIG.player.damage,
+                fireRate: CONFIG.player.fireRate,
+                fireTimer: 0,
+                bulletColor: '#d4af37',
+                bulletSize: 7,
+                standX: 0,
+                standY: 0,
+                standActive: false,
+                standType: null,
+                barrageActive: false,
+                barrageTimer: 0,
+                canRequiem: false,
+                currentStand: null,
+                // Stats
+                kills: 0,
+                totalDamage: 0,
+                // Vampire state
+                isVampire: false,
+                vampireRegenTimer: 0,
+                lifeLeech: 0
+            },
+            inDowntime: false,
+            downtimeTimer: 0,
+            gameOver: false,
+            activeAbilities: [],
+            downtimeStarted: false,
+            hoveredEnemy: null,
+            mouseX: 0,
+            mouseY: 0,
+            abilityCooldowns: {},
+            damageMultiplier: 1.0,
+            uiCollapsed: false,
+            bossAbilities: [],
+            keys: {},
+            keyToAbility: {},
+            shootKeyPressed: false,
+            score: 0,
+            achievements: [],
+            timeStopActive: false,
+            timeStopTimer: 0,
+            timeStopDuration: 0,
+            // New systems
+            inventory: {
+                standDisks: 0,
+                requiemArrows: 0,
+                saintRibCage: 0,
+                vampireMask: 0,
+                stands: [] // Stored stands
+            },
+            quests: {
+                active: [],
+                completed: []
+            },
+            // Smart stand selection
+            standSelectionHistory: [],
+            // Enemy targeting
+            targetedEnemy: null
+        };
+
+        // ===== GAME DATA =====
+        const joestarMessages = [
+            "Your next line will be... 'I should have dodged!'",
+            "A true gentleman always knows when to retreat.",
+            "The secret to victory lies in your Stand's true potential.",
+            "Even in defeat, the Joestar spirit lives on!",
+            "Your resolve wasn't strong enough to overcome this challenge.",
+            "A true warrior knows when to fight and when to run!",
+            "The Joestar bloodline will continue, even without you!"
+        ];
+
+        let leaderboard = JSON.parse(localStorage.getItem('jojoLeaderboard')) || [];
+        let standAbilities = [];
+        let passiveSkills = [];
+        let playerAbilities = [];
+        let playerPassives = [];
+        let playerStands = [];
+
+        // ===== ENEMY TYPES =====
+        const enemyTypes = [
+            { name: 'Stand User', color: '#ff5555', size: 22, speed: 1.2, maxHP: 45, standPowerDrain: 0.05, unlockPart: 1,
+              description: 'Basic Stand user. Slow but persistent.', canDropDisk: false },
+            { name: 'Zombie', color: '#aa55ff', size: 20, speed: 1.8, maxHP: 35, standPowerDrain: 0.08, unlockPart: 1,
+              description: 'Reanimated corpse with enhanced abilities.', canDropDisk: false },
+            { name: 'Dio\'s Servant', color: '#ff00ff', size: 28, speed: 1.3, maxHP: 55, standPowerDrain: 0.25, unlockPart: 5,
+              description: 'Vampire servant of Dio.', canDropDisk: true, isVampire: true }
+        ];
+
+        // ===== BOSS TYPES =====
+        const bossTypes = [
+            { 
+                name: 'DIO', 
+                color: '#ff0000', 
+                size: 25, 
+                speed: 0.8, 
+                maxHP: 600, 
+                standPowerDrain: 0.6, 
+                unlockPart: 5,
+                description: 'The vampire lord with the power to stop time.',
+                message: 'WRYYYYYYYY! YOU CANNOT DEFEAT ME!',
+                abilities: ['timeStop', 'knifeThrow', 'vampiricDrain'],
+                hasStand: true,
+                standName: 'The World',
+                standColor: '#ffff00',
+                standSize: 30,
+                isVampire: true
+            },
+            { 
+                name: 'Kars', 
+                color: '#ff7700', 
+                size: 30, 
+                speed: 1.2, 
+                maxHP: 700, 
+                standPowerDrain: 0.5, 
+                unlockPart: 10,
+                description: 'The ultimate life form with incredible abilities.',
+                message: 'I HAVE BECOME THE ULTIMATE BEING!',
+                abilities: ['lightBlade', 'regeneration', 'shapeShift'],
+                hasStand: false,
+                isVampire: true
+            },
+            { 
+                name: 'Funny Valentine', 
+                color: '#0000ff', 
+                size: 28, 
+                speed: 1.0, 
+                maxHP: 650, 
+                standPowerDrain: 0.4, 
+                unlockPart: 15,
+                description: 'President of the United States with D4C.',
+                message: 'DOJYAAAAN! I WILL CREATE A PARADISE!',
+                abilities: ['dimensionHop', 'loveTrain', 'cloneSummon'],
+                hasStand: true,
+                standName: 'Dirty Deeds Done Dirt Cheap',
+                standColor: '#ffffff',
+                standSize: 35
+            }
+        ];
+
+        // ===== QUEST DATA =====
+        const questTemplates = [
+            {
+                id: 'tusk_act1',
+                name: 'Tusk Act 1 Evolution',
+                description: 'Defeat 100 enemies to unlock Tusk Act 1',
+                type: 'kill',
+                requirement: 100,
+                reward: 'Tusk Act 1',
+                active: false
+            }
+        ];
+
+        // ===== GAME INITIALIZATION =====
+        function initializeGame() {
+            initializeStandSystem();
+            initializeLeaderboard();
+            initializeQuests();
+            spawnPart();
+            gameLoop();
+        }
+
+        function initializeStandSystem() {
+            // Stand Abilities - Each stand now has multiple abilities
+            standAbilities = [
+                {
+                    name: 'Star Platinum',
+                    emoji: '👊',
+                    description: 'The World-class Stand with incredible speed and power',
+                    abilities: [
+                        {
+                            name: 'ORA ORA RUSH',
+                            key: '1',
+                            duration: 60,
+                            cooldown: 300,
+                            description: 'Unleashes a rapid barrage of punches.',
+                            status: 'Multi-hit attack',
+                            effect: function() {
+                                gameState.player.barrageActive = true;
+                                gameState.player.barrageTimer = 60;
+                                unlockAchievement("ORA ORA ORA! Barrage Mastered!");
+                            }
+                        },
+                        {
+                            name: 'TIME STOP',
+                            key: '2',
+                            duration: 60,
+                            cooldown: 600,
+                            description: 'Stops time for 3 seconds',
+                            status: 'Freeze enemies',
+                            effect: function() {
+                                activateTimeStop(180); // 3 seconds
+                                unlockAchievement("ZA WARUDO! Time Stop Mastered!");
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#4ecdc4';
+                        gameState.player.damage += 5;
+                        gameState.player.bulletSize = 7;
+                        gameState.player.standType = 'Star Platinum';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.currentStand = this;
+                        unlockAchievement("Star Platinum Unleashed!");
+                    },
+                    status: '+5 Damage, Time Stop, Barrage'
+                },
+                {
+                    name: 'The World',
+                    emoji: '🌎',
+                    description: 'DIO\'s Stand with the ultimate ability to stop time',
+                    abilities: [
+                        {
+                            name: 'TIME STOP',
+                            key: '1',
+                            duration: 90,
+                            cooldown: 600,
+                            description: 'Stops time for 5 seconds',
+                            status: 'Freeze enemies',
+                            effect: function() {
+                                activateTimeStop(300); // 5 seconds
+                                unlockAchievement("THE WORLD! Ultimate Time Stop!");
+                            }
+                        },
+                        {
+                            name: 'KNIFE THROW',
+                            key: '2',
+                            duration: 1,
+                            cooldown: 120,
+                            description: 'Throws multiple knives in all directions',
+                            status: 'Area attack',
+                            effect: function() {
+                                for (let i = 0; i < 12; i++) {
+                                    const angle = (i / 12) * Math.PI * 2;
+                                    gameState.bullets.push(new Bullet(
+                                        gameState.player.x, 
+                                        gameState.player.y,
+                                        Math.cos(angle) * 10,
+                                        Math.sin(angle) * 10,
+                                        gameState.player.damage * 2
+                                    ));
+                                }
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#ffff00';
+                        gameState.player.damage += 6;
+                        gameState.player.bulletSize = 8;
+                        gameState.player.standType = 'The World';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.currentStand = this;
+                        unlockAchievement("The World! DIO's Power!");
+                    },
+                    status: '+6 Damage, Enhanced Time Stop'
+                },
+                {
+                    name: 'Wonder of U',
+                    emoji: '🌀',
+                    description: 'The flow of calamity itself, bringing misfortune to pursuers',
+                    abilities: [
+                        {
+                            name: 'CALAMITY',
+                            key: '1',
+                            duration: 120,
+                            cooldown: 400,
+                            description: 'Creates a calamity field that damages enemies who approach',
+                            status: 'Area denial',
+                            effect: function() {
+                                createCalamityField(gameState.player.x, gameState.player.y, 200);
+                                unlockAchievement("Calamity Unleashed!");
+                            }
+                        },
+                        {
+                            name: 'PURSUIT DENIAL',
+                            key: '2',
+                            duration: 180,
+                            cooldown: 500,
+                            description: 'Enemies who pursue you take continuous damage',
+                            status: 'Passive damage',
+                            effect: function() {
+                                gameState.activeAbilities.push({
+                                    id: 'pursuit_denial_' + Date.now(),
+                                    duration: 180,
+                                    elapsed: 0,
+                                    type: 'pursuit_denial'
+                                });
+                                unlockAchievement("Pursuit Denial Activated!");
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#8a2be2';
+                        gameState.player.damage += 4;
+                        gameState.player.bulletSize = 6;
+                        gameState.player.standType = 'Wonder of U';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.currentStand = this;
+                        unlockAchievement("Wonder of U! Calamity Personified!");
+                    },
+                    status: '+4 Damage, Calamity Field, Pursuit Denial'
+                },
+                {
+                    name: 'Dirty Deeds Done Dirt Cheap',
+                    emoji: '🇺🇸',
+                    description: 'Can travel between dimensions and summon clones',
+                    abilities: [
+                        {
+                            name: 'DIMENSION HOP',
+                            key: '1',
+                            duration: 1,
+                            cooldown: 300,
+                            description: 'Teleports to a random location',
+                            status: 'Escape ability',
+                            effect: function() {
+                                gameState.player.x += Math.random() * 200 - 100;
+                                gameState.player.y += Math.random() * 200 - 100;
+                                unlockAchievement("Dimension Hopping!");
+                            }
+                        },
+                        {
+                            name: 'CLONE SUMMON',
+                            key: '2',
+                            duration: 180,
+                            cooldown: 450,
+                            description: 'Summons a temporary clone to fight alongside you',
+                            status: 'Summon ally',
+                            effect: function() {
+                                summonD4CClone();
+                                unlockAchievement("Clone Summoned!");
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#ffffff';
+                        gameState.player.damage += 5;
+                        gameState.player.bulletSize = 7;
+                        gameState.player.standType = 'D4C';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.currentStand = this;
+                        unlockAchievement("D4C! Dirty Deeds Done Dirt Cheap!");
+                    },
+                    status: '+5 Damage, Dimension Hop, Clone Summon'
+                },
+                {
+                    name: 'Whitesnake',
+                    emoji: '💿',
+                    description: 'Can create stand discs and manipulate memories',
+                    abilities: [
+                        {
+                            name: 'DISC CREATION',
+                            key: '1',
+                            duration: 1,
+                            cooldown: 600,
+                            description: 'Creates a stand disc from a defeated enemy',
+                            status: 'Stand creation',
+                            effect: function() {
+                                if (gameState.enemies.length > 0) {
+                                    const enemy = gameState.enemies[0];
+                                    if (enemy.takeDamage(enemy.hp, gameState.player.x, gameState.player.y)) {
+                                        gameState.inventory.standDisks++;
+                                        unlockAchievement("Stand Disc Created!");
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            name: 'MEMORY MANIPULATION',
+                            key: '2',
+                            duration: 120,
+                            cooldown: 400,
+                            description: 'Slows all enemies and reduces their damage',
+                            status: 'Crowd control',
+                            effect: function() {
+                                gameState.activeAbilities.push({
+                                    id: 'memory_manipulation_' + Date.now(),
+                                    duration: 120,
+                                    elapsed: 0,
+                                    type: 'memory_manipulation'
+                                });
+                                unlockAchievement("Memory Manipulation Activated!");
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#00ffff';
+                        gameState.player.damage += 4;
+                        gameState.player.bulletSize = 6;
+                        gameState.player.standType = 'Whitesnake';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.currentStand = this;
+                        unlockAchievement("Whitesnake! Memory Manipulation!");
+                    },
+                    status: '+4 Damage, Disc Creation, Memory Manipulation'
+                }
+            ];
+
+            // Passive Skills
+            passiveSkills = [
+                {
+                    name: 'Joestar Spirit',
+                    emoji: '⭐',
+                    description: 'Increase max stand power by 20',
+                    effect: function() { 
+                        gameState.player.maxStandPower = (gameState.player.maxStandPower || 100) + 20;
+                        gameState.standPower += 20;
+                    },
+                    status: '+20 Max Stand Power'
+                },
+                {
+                    name: 'Hamon Training',
+                    emoji: '☀️',
+                    description: 'Increase movement speed by 1',
+                    effect: function() { gameState.player.speed += 1; },
+                    status: '+1 Speed'
+                },
+                {
+                    name: 'Vampiric Essence',
+                    emoji: '🦇',
+                    description: 'Gain 1.5% HP regeneration and life leech',
+                    effect: function() { 
+                        gameState.player.isVampire = true;
+                        gameState.player.lifeLeech = 0.1;
+                        document.getElementById('vampireAura').style.display = 'block';
+                    },
+                    status: 'Vampire Transformation'
+                }
+            ];
+        }
+
+        // ===== VAMPIRE MASK SYSTEM =====
+        function useVampireMask() {
+            if (gameState.inventory.vampireMask > 0) {
+                gameState.player.isVampire = true;
+                gameState.player.lifeLeech = 0.1;
+                gameState.inventory.vampireMask--;
+                document.getElementById('vampireAura').style.display = 'block';
+                unlockAchievement("Vampire Transformation!");
+                updateInventoryDisplay();
+            }
+        }
+
+        function updateVampireEffects() {
+            if (gameState.player.isVampire) {
+                // Health regeneration
+                gameState.player.vampireRegenTimer++;
+                if (gameState.player.vampireRegenTimer >= 60) { // Every second
+                    gameState.standPower = Math.min(gameState.player.maxStandPower, 
+                        gameState.standPower + (gameState.player.maxStandPower * 0.015));
+                    gameState.player.vampireRegenTimer = 0;
+                }
+                
+                // Life leech from damage
+                if (gameState.player.lifeLeech > 0 && gameState.player.totalDamage > 0) {
+                    const leechAmount = gameState.player.totalDamage * gameState.player.lifeLeech;
+                    gameState.standPower = Math.min(gameState.player.maxStandPower, 
+                        gameState.standPower + leechAmount);
+                    gameState.player.totalDamage = 0;
+                }
+                
+                // 1% chance to turn killed enemy into boss
+                if (Math.random() < 0.01 && gameState.enemies.length < 5) {
+                    const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+                    const boss = new Enemy(bossType, 
+                                          gameState.player.x + Math.random() * 400 - 200, 
+                                          gameState.player.y + Math.random() * 400 - 200);
+                    gameState.enemies.push(boss);
+                    unlockAchievement("Enemy Transformed into Boss!");
+                }
+            }
+        }
+
+        // ===== BLOOD EFFECT SYSTEM =====
+        class BloodEffect {
+            constructor(x, y, size = 10) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.life = 30;
+            }
+            
+            update() {
+                this.life--;
+                return this.life > 0;
+            }
+            
+            draw() {
+                const screenX = canvas.width / 2 + (this.x - gameState.player.x);
+                const screenY = canvas.height / 2 + (this.y - gameState.player.y);
+                
+                const alpha = this.life / 30;
+                ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function createBloodEffect(x, y, size = 10) {
+            const blood = new BloodEffect(x, y, size);
+            gameState.bloodEffects.push(blood);
+            
+            // Also create visual DOM element for splash effect
+            const bloodSplash = document.createElement('div');
+            bloodSplash.className = 'blood-effect';
+            bloodSplash.style.left = `${canvas.width / 2 + (x - gameState.player.x) - 10}px`;
+            bloodSplash.style.top = `${canvas.height / 2 + (y - gameState.player.y) - 10}px`;
+            document.body.appendChild(bloodSplash);
+            
+            setTimeout(() => {
+                if (document.body.contains(bloodSplash)) {
+                    document.body.removeChild(bloodSplash);
+                }
+            }, 500);
+        }
+
+        // ===== QUEST SYSTEM =====
+        function initializeQuests() {
+            // Start with Tusk Act 1 quest
+            addQuest('tusk_act1');
+        }
+
+        function addQuest(questId) {
+            const questTemplate = questTemplates.find(q => q.id === questId);
+            if (!questTemplate) return;
+            
+            const existingQuest = gameState.quests.active.find(q => q.id === questId);
+            if (existingQuest) return;
+            
+            const quest = {
+                ...questTemplate,
+                progress: 0,
+                completed: false
+            };
+            
+            gameState.quests.active.push(quest);
+            updateQuestDisplay();
+        }
+
+        function updateQuestProgress(questId, amount = 1) {
+            const quest = gameState.quests.active.find(q => q.id === questId);
+            if (!quest || quest.completed) return;
+            
+            if (quest.type === 'kill') {
+                quest.progress += amount;
+            }
+            
+            if (quest.progress >= quest.requirement) {
+                completeQuest(questId);
+            }
+            
+            updateQuestDisplay();
+        }
+
+        function completeQuest(questId) {
+            const questIndex = gameState.quests.active.findIndex(q => q.id === questId);
+            if (questIndex === -1) return;
+            
+            const quest = gameState.quests.active[questIndex];
+            quest.completed = true;
+            
+            // Move to completed
+            gameState.quests.active.splice(questIndex, 1);
+            gameState.quests.completed.push(quest);
+            
+            unlockAchievement(`Quest Completed: ${quest.name}`);
+            
+            updateQuestDisplay();
+        }
+
+        function updateQuestDisplay() {
+            const questList = document.getElementById('questList');
+            questList.innerHTML = '';
+            
+            gameState.quests.active.forEach(quest => {
+                const questItem = document.createElement('div');
+                questItem.className = 'quest-item';
+                
+                const progressPercent = (quest.progress / quest.requirement) * 100;
+                
+                questItem.innerHTML = `
+                    <div><strong>${quest.name}</strong></div>
+                    <div>${quest.description}</div>
+                    <div>Progress: ${quest.progress}/${quest.requirement}</div>
+                    <div class="quest-progress">
+                        <div class="quest-progress-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                `;
+                
+                questList.appendChild(questItem);
+            });
+            
+            if (gameState.quests.active.length === 0) {
+                questList.innerHTML = '<div>No active quests</div>';
+            }
+        }
+
+        // ===== INVENTORY SYSTEM =====
+        function updateInventoryDisplay() {
+            const inventoryList = document.getElementById('inventoryList');
+            inventoryList.innerHTML = '';
+            
+            // Stand Disks
+            if (gameState.inventory.standDisks > 0) {
+                const diskItem = document.createElement('div');
+                diskItem.className = 'inventory-item';
+                diskItem.innerHTML = '💿';
+                diskItem.title = `Stand Disk x${gameState.inventory.standDisks}`;
+                diskItem.onclick = () => useStandDisk();
+                const count = document.createElement('div');
+                count.className = 'item-count';
+                count.textContent = gameState.inventory.standDisks;
+                diskItem.appendChild(count);
+                inventoryList.appendChild(diskItem);
+            }
+            
+            // Requiem Arrows
+            if (gameState.inventory.requiemArrows > 0) {
+                const arrowItem = document.createElement('div');
+                arrowItem.className = 'inventory-item';
+                arrowItem.innerHTML = '🏹';
+                arrowItem.title = `Requiem Arrow x${gameState.inventory.requiemArrows}`;
+                arrowItem.onclick = () => useRequiemArrow();
+                const count = document.createElement('div');
+                count.className = 'item-count';
+                count.textContent = gameState.inventory.requiemArrows;
+                arrowItem.appendChild(count);
+                inventoryList.appendChild(arrowItem);
+            }
+            
+            // Vampire Mask
+            if (gameState.inventory.vampireMask > 0) {
+                const maskItem = document.createElement('div');
+                maskItem.className = 'inventory-item';
+                maskItem.innerHTML = '🎭';
+                maskItem.title = `Vampire Mask x${gameState.inventory.vampireMask}`;
+                maskItem.onclick = () => useVampireMask();
+                const count = document.createElement('div');
+                count.className = 'item-count';
+                count.textContent = gameState.inventory.vampireMask;
+                maskItem.appendChild(count);
+                inventoryList.appendChild(maskItem);
+            }
+            
+            if (inventoryList.children.length === 0) {
+                inventoryList.innerHTML = '<div>Inventory is empty</div>';
+            }
+        }
+
+        function useStandDisk() {
+            if (gameState.inventory.standDisks > 0 && gameState.player.standActive) {
+                // Store current stand
+                gameState.inventory.stands.push(gameState.currentStand);
+                gameState.inventory.standDisks--;
+                
+                // Unequip stand
+                gameState.player.standActive = false;
+                gameState.currentStand = null;
+                playerAbilities = [];
+                gameState.keyToAbility = {};
+                
+                updateInventoryDisplay();
+                unlockAchievement("Stand Stored!");
+            }
+        }
+
+        function useRequiemArrow() {
+            if (gameState.inventory.requiemArrows > 0 && gameState.player.canRequiem && gameState.currentStand) {
+                useRequiemNow();
+                gameState.inventory.requiemArrows--;
+                updateInventoryDisplay();
+            }
+        }
+
+        // ===== ENEMY CLASS WITH BLOOD EFFECTS =====
+        class Enemy {
+            constructor(type, x, y) {
+                Object.assign(this, type);
+                this.x = x;
+                this.y = y;
+                this.hp = this.maxHP;
+                this.shootTimer = 0;
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.isBoss = this.unlockPart % 5 === 0;
+                this.abilityTimer = 0;
+                this.abilityCooldown = CONFIG.boss.abilityCooldown;
+                this.standX = this.x;
+                this.standY = this.y;
+                this.standActive = this.hasStand || false;
+                this.targetAngle = 0;
+                
+                // Boss specific properties
+                if (this.isBoss) {
+                    this.abilityCooldown = 300; // 5 seconds for boss abilities
+                }
+            }
+            
+            takeDamage(damage, sourceX, sourceY) {
+                this.hp -= damage;
+                gameState.player.totalDamage += damage;
+                
+                // Create blood effect
+                createBloodEffect(this.x, this.y, 15);
+                
+                // Boss-specific drops
+                if (this.hp <= 0 && this.isBoss) {
+                    if (Math.random() < CONFIG.game.requiemDropChance) {
+                        gameState.inventory.requiemArrows++;
+                        unlockAchievement("Requiem Arrow Acquired!");
+                    }
+                }
+                
+                // Vampire mask drop from vampires
+                if (this.hp <= 0 && this.isVampire && Math.random() < CONFIG.game.vampireMaskDropChance) {
+                    gameState.inventory.vampireMask++;
+                    unlockAchievement("Vampire Mask Acquired!");
+                }
+                
+                // Regular enemy drops
+                if (this.hp <= 0 && this.canDropDisk && Math.random() < CONFIG.game.standDiskDropChance) {
+                    gameState.inventory.standDisks++;
+                    unlockAchievement("Stand Disk Acquired!");
+                }
+                
+                return this.hp <= 0;
+            }
+            
+            move() {
+                // Check if time is stopped
+                const isTimeStopped = gameState.timeStopActive;
+                if (isTimeStopped) return;
+                
+                let dx = gameState.player.x - this.x, dy = gameState.player.y - this.y, dist = Math.hypot(dx, dy);
+                if (dist > 0) {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+                
+                // Update target angle for stand orientation
+                this.targetAngle = Math.atan2(dy, dx);
+                
+                // Move stand with enemy
+                if (this.standActive) {
+                    this.standX = this.x + Math.cos(this.targetAngle) * 40;
+                    this.standY = this.y + Math.sin(this.targetAngle) * 40;
+                }
+                
+                // Boss abilities
+                if (this.isBoss) {
+                    this.abilityTimer++;
+                    if (this.abilityTimer >= this.abilityCooldown) {
+                        this.useAbility();
+                        this.abilityTimer = 0;
+                    }
+                }
+                
+                // Handle shooting
+                if (this.shoots) {
+                    this.shootTimer++;
+                    if (this.shootTimer >= 120) {
+                        let angle = Math.atan2(gameState.player.y - this.y, gameState.player.x - this.x);
+                        gameState.bullets.push(new Bullet(
+                            this.x, this.y, 
+                            Math.cos(angle) * 5, 
+                            Math.sin(angle) * 5, 
+                            this.damage || 3, 
+                            true
+                        ));
+                        this.shootTimer = 0;
+                    }
+                }
+            }
+            
+            useAbility() {
+                if (!this.abilities || this.abilities.length === 0) return;
+                
+                const ability = this.abilities[Math.floor(Math.random() * this.abilities.length)];
+                const abilityText = document.createElement('div');
+                abilityText.className = 'boss-ability';
+                abilityText.textContent = `${this.name} uses ${ability.replace(/([A-Z])/g, ' $1').trim()}!`;
+                abilityText.style.left = `${canvas.width / 2 + (this.x - gameState.player.x)}px`;
+                abilityText.style.top = `${canvas.height / 2 + (this.y - gameState.player.y) - this.size - 20}px`;
+                document.body.appendChild(abilityText);
+                
+                setTimeout(() => {
+                    if (document.body.contains(abilityText)) {
+                        document.body.removeChild(abilityText);
+                    }
+                }, 2000);
+                
+                // Apply ability effects
+                switch(ability) {
+                    case 'timeStop':
+                        // Temporarily freeze player and bullets
+                        gameState.activeAbilities.push({
+                            id: 'timeStop_' + Date.now(),
+                            duration: 60, // 1 second
+                            elapsed: 0,
+                            type: 'timeStop'
+                        });
+                        break;
+                    case 'knifeThrow':
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2;
+                            let bullet = new Bullet(
+                                this.x, this.y,
+                                Math.cos(angle) * 7,
+                                Math.sin(angle) * 7,
+                                5,
+                                true
+                            );
+                            bullet.color = '#ffffff';
+                            gameState.bullets.push(bullet);
+                        }
+                        break;
+                    case 'vampiricDrain':
+                        // Drain stand power from player
+                        gameState.standPower -= 20;
+                        this.hp += 30;
+                        break;
+                    case 'lightBlade':
+                        // Create a blade projectile
+                        let angle = Math.atan2(gameState.player.y - this.y, gameState.player.x - this.x);
+                        let bullet = new Bullet(
+                            this.x, this.y,
+                            Math.cos(angle) * 8,
+                            Math.sin(angle) * 8,
+                            10,
+                            true
+                        );
+                        bullet.color = '#ffaa00';
+                        bullet.size = 12;
+                        gameState.bullets.push(bullet);
+                        break;
+                    case 'dimensionHop':
+                        // Teleport to a new location
+                        this.x += Math.random() * 200 - 100;
+                        this.y += Math.random() * 200 - 100;
+                        break;
+                }
+            }
+            
+            draw() {
+                const screenX = canvas.width / 2 + (this.x - gameState.player.x);
+                const screenY = canvas.height / 2 + (this.y - gameState.player.y);
+                
+                // Draw enemy
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw stand if active
+                if (this.standActive) {
+                    const standScreenX = canvas.width / 2 + (this.standX - gameState.player.x);
+                    const standScreenY = canvas.height / 2 + (this.standY - gameState.player.y);
+                    
+                    ctx.fillStyle = this.standColor || '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(standScreenX, standScreenY, this.standSize || 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Stand name for bosses
+                    if (this.isBoss) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 14px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(this.standName, standScreenX, standScreenY - (this.standSize || 25) - 15);
+                        ctx.textAlign = 'left';
+                    }
+                }
+                
+                // Bosses have special rendering
+                if (this.isBoss) {
+                    // Boss aura
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, this.size + 10, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Boss name
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.name, screenX, screenY - this.size - 15);
+                    ctx.textAlign = 'left';
+                }
+                
+                // Health bar
+                ctx.fillStyle = "red";
+                ctx.fillRect(screenX - this.size, screenY - this.size - 10, (this.hp / this.maxHP) * this.size * 2, 4);
+                ctx.strokeStyle = "#fff";
+                ctx.strokeRect(screenX - this.size, screenY - this.size - 10, this.size * 2, 4);
+            }
+        }
+
+        // ===== BULLET CLASS =====
+        class Bullet {
+            constructor(x, y, dx, dy, damage = 5, isEnemyBullet = false) {
+                this.x = x;
+                this.y = y;
+                this.dx = dx;
+                this.dy = dy;
+                this.size = isEnemyBullet ? 5 : gameState.player.bulletSize;
+                this.damage = damage * gameState.damageMultiplier;
+                this.isEnemyBullet = isEnemyBullet;
+                this.color = isEnemyBullet ? '#ff5555' : gameState.player.bulletColor;
+                this.enemiesHit = [];
+            }
+            
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2 + (this.x - gameState.player.x), canvas.height / 2 + (this.y - gameState.player.y), this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ===== HEALING ORB CLASS =====
+        class HealingOrb {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = 8;
+                this.life = 600; // 10 seconds at 60fps
+            }
+            
+            update() {
+                this.life--;
+                
+                // Move toward player
+                const dx = gameState.player.x - this.x;
+                const dy = gameState.player.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                
+                if (dist < 50) { // Attract when close
+                    this.x += (dx / dist) * 3;
+                    this.y += (dy / dist) * 3;
+                }
+                
+                // Check collision with player
+                if (dist < this.size + gameState.player.size) {
+                    gameState.standPower = Math.min(gameState.player.maxStandPower, gameState.standPower + CONFIG.game.healingOrbHealAmount);
+                    return false;
+                }
+                
+                return this.life > 0;
+            }
+            
+            draw() {
+                const screenX = canvas.width / 2 + (this.x - gameState.player.x);
+                const screenY = canvas.height / 2 + (this.y - gameState.player.y);
+                
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ===== TIME STOP MECHANICS =====
+        function activateTimeStop(duration) {
+            gameState.timeStopActive = true;
+            gameState.timeStopTimer = 0;
+            gameState.timeStopDuration = duration;
+            
+            // Visual effects
+            document.getElementById('timeStopOverlay').style.display = 'block';
+            document.getElementById('timeStopText').style.display = 'block';
+            
+            // Play time stop sound (conceptual)
+            unlockAchievement("TIME STOP ACTIVATED!");
+        }
+
+        function updateTimeStop() {
+            if (gameState.timeStopActive) {
+                gameState.timeStopTimer++;
+                
+                // Update time stop text with countdown
+                const timeLeft = Math.ceil((gameState.timeStopDuration - gameState.timeStopTimer) / 60);
+                document.getElementById('timeStopText').textContent = `TIME STOP: ${timeLeft}s`;
+                
+                if (gameState.timeStopTimer >= gameState.timeStopDuration) {
+                    gameState.timeStopActive = false;
+                    document.getElementById('timeStopOverlay').style.display = 'none';
+                    document.getElementById('timeStopText').style.display = 'none';
+                }
+            }
+        }
+
+        // ===== REQUIEM SYSTEM =====
+        function showRequiemPopup() {
+            document.getElementById('requiemPopup').style.display = 'block';
+        }
+
+        function useRequiemNow() {
+            if (gameState.player.canRequiem && gameState.currentStand) {
+                // Enhance the current stand
+                gameState.player.damage += 10;
+                gameState.player.bulletSize += 3;
+                gameState.player.standType += " Requiem";
+                unlockAchievement("REQUIEM ACHIEVED!");
+            }
+            document.getElementById('requiemPopup').style.display = 'none';
+        }
+
+        function saveRequiem() {
+            gameState.inventory.requiemArrows++;
+            document.getElementById('requiemPopup').style.display = 'none';
+            unlockAchievement("Requiem Arrow Stored!");
+        }
+
+        // ===== STAND BARRAGE MECHANICS =====
+        function updateBarrage() {
+            if (gameState.player.barrageActive) {
+                gameState.player.barrageTimer--;
+                
+                // Spawn barrage bullets
+                if (gameState.player.barrageTimer % 3 === 0) {
+                    // Target nearest enemy or use mouse direction
+                    let targetX, targetY;
+                    if (gameState.targetedEnemy) {
+                        targetX = gameState.targetedEnemy.x;
+                        targetY = gameState.targetedEnemy.y;
+                    } else {
+                        let rect = canvas.getBoundingClientRect();
+                        targetX = gameState.player.x + (gameState.mouseX - canvas.width / 2);
+                        targetY = gameState.player.y + (gameState.mouseY - canvas.height / 2);
+                    }
+                    
+                    let angle = Math.atan2(targetY - gameState.player.standY, targetX - gameState.player.standX);
+                    let spread = (Math.random() - 0.5) * 0.5;
+                    
+                    gameState.bullets.push(new Bullet(
+                        gameState.player.standX, 
+                        gameState.player.standY, 
+                        Math.cos(angle + spread) * 15, 
+                        Math.sin(angle + spread) * 15, 
+                        gameState.player.damage * 0.7
+                    ));
+                }
+                
+                if (gameState.player.barrageTimer <= 0) {
+                    gameState.player.barrageActive = false;
+                }
+            }
+        }
+
+        // ===== ENEMY TARGETING SYSTEM =====
+        function updateTargeting() {
+            // Find nearest enemy
+            let nearestEnemy = null;
+            let nearestDistance = Infinity;
+            
+            gameState.enemies.forEach(enemy => {
+                const dx = enemy.x - gameState.player.x;
+                const dy = enemy.y - gameState.player.y;
+                const distance = Math.hypot(dx, dy);
+                
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestEnemy = enemy;
+                }
+            });
+            
+            gameState.targetedEnemy = nearestEnemy;
+            
+            // Update stand position to face targeted enemy
+            if (gameState.player.standActive && gameState.targetedEnemy) {
+                const dx = gameState.targetedEnemy.x - gameState.player.x;
+                const dy = gameState.targetedEnemy.y - gameState.player.y;
+                const angle = Math.atan2(dy, dx);
+                
+                gameState.player.standX = gameState.player.x + Math.cos(angle) * 40;
+                gameState.player.standY = gameState.player.y + Math.sin(angle) * 40;
+            }
+        }
+
+        // ===== SPECIAL ABILITY EFFECTS =====
+        function createCalamityField(x, y, radius) {
+            // Create visual effect
+            const aoe = document.createElement('div');
+            aoe.className = 'stand-aoe';
+            aoe.style.left = `${canvas.width / 2 + (x - gameState.player.x) - radius}px`;
+            aoe.style.top = `${canvas.height / 2 + (y - gameState.player.y) - radius}px`;
+            aoe.style.width = `${radius * 2}px`;
+            aoe.style.height = `${radius * 2}px`;
+            document.body.appendChild(aoe);
+            
+            setTimeout(() => {
+                if (document.body.contains(aoe)) {
+                    document.body.removeChild(aoe);
+                }
+            }, 1000);
+            
+            // Damage enemies in radius
+            gameState.enemies.forEach(enemy => {
+                const dx = enemy.x - x;
+                const dy = enemy.y - y;
+                const distance = Math.hypot(dx, dy);
+                
+                if (distance < radius) {
+                    enemy.takeDamage(5, x, y);
+                }
+            });
+        }
+
+        function summonD4CClone() {
+            // Create a temporary clone that fights alongside the player
+            const clone = {
+                x: gameState.player.x + Math.random() * 100 - 50,
+                y: gameState.player.y + Math.random() * 100 - 50,
+                size: 20,
+                color: '#ffffff',
+                life: 180, // 3 seconds
+                shootTimer: 0,
+                update: function() {
+                    this.life--;
+                    
+                    // Move toward nearest enemy
+                    let nearestEnemy = null;
+                    let nearestDistance = Infinity;
+                    
+                    gameState.enemies.forEach(enemy => {
+                        const dx = enemy.x - this.x;
+                        const dy = enemy.y - this.y;
+                        const distance = Math.hypot(dx, dy);
+                        
+                        if (distance < nearestDistance) {
+                            nearestDistance = distance;
+                            nearestEnemy = enemy;
+                        }
+                    });
+                    
+                    if (nearestEnemy) {
+                        const dx = nearestEnemy.x - this.x;
+                        const dy = nearestEnemy.y - this.y;
+                        const dist = Math.hypot(dx, dy);
+                        
+                        if (dist > 0) {
+                            this.x += (dx / dist) * 3;
+                            this.y += (dy / dist) * 3;
+                        }
+                        
+                        // Shoot at enemy
+                        this.shootTimer++;
+                        if (this.shootTimer >= 30) {
+                            const angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
+                            gameState.bullets.push(new Bullet(
+                                this.x, this.y,
+                                Math.cos(angle) * 8,
+                                Math.sin(angle) * 8,
+                                gameState.player.damage * 0.5
+                            ));
+                            this.shootTimer = 0;
+                        }
+                    }
+                    
+                    return this.life > 0;
+                },
+                draw: function() {
+                    const screenX = canvas.width / 2 + (this.x - gameState.player.x);
+                    const screenY = canvas.height / 2 + (this.y - gameState.player.y);
+                    
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw D4C emblem
+                    ctx.fillStyle = '#0000ff';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('D4C', screenX, screenY + 5);
+                    ctx.textAlign = 'left';
+                }
+            };
+            
+            gameState.activeAbilities.push({
+                id: 'd4c_clone_' + Date.now(),
+                duration: 180,
+                elapsed: 0,
+                type: 'd4c_clone',
+                clone: clone
+            });
+        }
+
+        // ===== GAME LOOP FUNCTIONS =====
+        function gameLoop() {
+            update();
+            render();
+            
+            if (!gameState.gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function update() {
+            if (gameState.gameOver) return;
+            
+            updateCooldowns();
+            updateBossAbilities();
+            updateBulletTrails();
+            updateHealingOrbs();
+            updateBloodEffects();
+            updateTimeStop();
+            updateBarrage();
+            updateTargeting();
+            updateVampireEffects();
+            
+            // Update player stand position
+            if (gameState.player.standActive && !gameState.targetedEnemy) {
+                // Default stand position when no enemies
+                gameState.player.standX = gameState.player.x + 40;
+                gameState.player.standY = gameState.player.y;
+            }
+            
+            if (!gameState.inDowntime) {
+                updateGameplay();
+            } else {
+                updateDowntime();
+            }
+            
+            updateStandPowerDisplay();
+            
+            if (gameState.uiCollapsed) {
+                updateCompactKeybinds();
+            }
+        }
+
+        function updateCooldowns() {
+            for (let key in gameState.abilityCooldowns) {
+                if (gameState.abilityCooldowns[key] > 0) {
+                    gameState.abilityCooldowns[key]--;
+                }
+            }
+            
+            // Update fire timer
+            if (gameState.player.fireTimer > 0) {
+                gameState.player.fireTimer--;
+            }
+        }
+
+        function updateBossAbilities() {
+            for (let i = gameState.bossAbilities.length - 1; i >= 0; i--) {
+                const ability = gameState.bossAbilities[i];
+                ability.elapsed++;
+                
+                if (ability.elapsed >= ability.duration) {
+                    gameState.bossAbilities.splice(i, 1);
+                }
+            }
+        }
+
+        function updateBulletTrails() {
+            for (let i = gameState.bulletTrails.length - 1; i >= 0; i--) {
+                gameState.bulletTrails[i].life--;
+                if (gameState.bulletTrails[i].life <= 0) {
+                    gameState.bulletTrails.splice(i, 1);
+                }
+            }
+        }
+
+        function updateHealingOrbs() {
+            for (let i = gameState.healingOrbs.length - 1; i >= 0; i--) {
+                if (!gameState.healingOrbs[i].update()) {
+                    gameState.healingOrbs.splice(i, 1);
+                }
+            }
+        }
+
+        function updateBloodEffects() {
+            for (let i = gameState.bloodEffects.length - 1; i >= 0; i--) {
+                if (!gameState.bloodEffects[i].update()) {
+                    gameState.bloodEffects.splice(i, 1);
+                }
+            }
+        }
+
+        function updateGameplay() {
+            // Check if time is stopped
+            const isTimeStopped = gameState.timeStopActive;
+            
+            // Player movement
+            if (!isTimeStopped) {
+                if (gameState.keys['w'] || gameState.keys['ArrowUp']) gameState.player.y -= gameState.player.speed;
+                if (gameState.keys['s'] || gameState.keys['ArrowDown']) gameState.player.y += gameState.player.speed;
+                if (gameState.keys['a'] || gameState.keys['ArrowLeft']) gameState.player.x -= gameState.player.speed;
+                if (gameState.keys['d'] || gameState.keys['ArrowRight']) gameState.player.x += gameState.player.speed;
+            }
+            
+            // Shooting with Q key
+            if (gameState.shootKeyPressed && gameState.player.fireTimer <= 0) {
+                shoot();
+                gameState.player.fireTimer = gameState.player.fireRate;
+            }
+            
+            // Move enemies (unless time is stopped)
+            if (!isTimeStopped) {
+                gameState.enemies.forEach(e => e.move());
+            }
+            
+            // Check for enemy collisions with player
+            checkEnemyCollisions();
+            
+            // Update bullets and check for collisions
+            updateBullets();
+            
+            // Check for game over
+            if (gameState.standPower <= 0) {
+                showDeathScreen();
+                return;
+            }
+            
+            // Check if part is complete
+            if (gameState.enemies.length === 0 && !gameState.downtimeStarted) {
+                startDowntime();
+            }
+        }
+
+        function shoot() {
+            // Target nearest enemy or use mouse direction
+            let targetX, targetY;
+            if (gameState.targetedEnemy) {
+                targetX = gameState.targetedEnemy.x;
+                targetY = gameState.targetedEnemy.y;
+            } else {
+                let rect = canvas.getBoundingClientRect();
+                targetX = gameState.player.x + (gameState.mouseX - canvas.width / 2);
+                targetY = gameState.player.y + (gameState.mouseY - canvas.height / 2);
+            }
+            
+            let angle = Math.atan2(targetY - gameState.player.y, targetX - gameState.player.x);
+            
+            for (let i = 0; i < gameState.player.bulletCount; i++) {
+                let spread = (i - (gameState.player.bulletCount - 1) / 2) * 0.2;
+                gameState.bullets.push(new Bullet(
+                    gameState.player.x, 
+                    gameState.player.y, 
+                    Math.cos(angle + spread) * gameState.player.bulletSpeed, 
+                    Math.sin(angle + spread) * gameState.player.bulletSpeed, 
+                    gameState.player.damage
+                ));
+            }
+        }
+
+        function checkEnemyCollisions() {
+            gameState.enemies.forEach(e => {
+                let d = Math.hypot(e.x - gameState.player.x, e.y - gameState.player.y);
+                if (d < e.size + gameState.player.size) {
+                    gameState.standPower -= (0.2 + (e.standPowerDrain || 0));
+                }
+            });
+        }
+
+        function updateBullets() {
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                let b = gameState.bullets[i];
+                b.update();
+                
+                // Remove bullets that go off screen
+                if (b.x < gameState.player.x - canvas.width / 2 || b.x > gameState.player.x + canvas.width / 2 ||
+                    b.y < gameState.player.y - canvas.height / 2 || b.y > gameState.player.y + canvas.height / 2) {
+                    gameState.bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Check for enemy collisions
+                let bulletHit = false;
+                for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+                    let e = gameState.enemies[j];
+                    if (b.enemiesHit.includes(e.id)) continue;
+                    
+                    let d = Math.hypot(b.x - e.x, b.y - e.y);
+                    if (d < b.size + e.size) {
+                        // Use the new takeDamage method
+                        const enemyDied = e.takeDamage(b.damage, b.x, b.y);
+                        
+                        if (enemyDied) {
+                            gameState.player.kills++;
+                            updateQuestProgress('tusk_act1');
+                            
+                            if (Math.random() < CONFIG.game.healingOrbSpawnChance) {
+                                gameState.healingOrbs.push(new HealingOrb(e.x, e.y));
+                            }
+                            
+                            gameState.score += 10;
+                            gameState.enemies.splice(j, 1);
+                        }
+                        
+                        b.enemiesHit.push(e.id);
+                        gameState.bullets.splice(i, 1);
+                        bulletHit = true;
+                        break;
+                    }
+                }
+                
+                if (bulletHit) break;
+            }
+        }
+
+        function updateDowntime() {
+            if (document.getElementById('standPopup').style.display === 'none') {
+                gameState.downtimeTimer--;
+                document.getElementById('status').textContent = 
+                    `Downtime: ${Math.ceil(gameState.downtimeTimer / 60)} sec`;
+                
+                if (gameState.downtimeTimer <= 0) {
+                    endDowntime();
+                }
+            }
+        }
+
+        function endDowntime() {
+            gameState.inDowntime = false;
+            gameState.downtimeTimer = 0;
+            gameState.downtimeStarted = false;
+            gameState.part++;
+            spawnPart();
+            gameState.standPower = Math.min(gameState.standPower + CONFIG.game.standPowerRegenPerPart, 
+                                   gameState.player.maxStandPower || 100);
+            document.getElementById('skipDowntimeBtn').style.display = 'none';
+            document.getElementById('status').textContent = '';
+        }
+
+        // ===== RENDERING FUNCTIONS =====
+        function drawBackground() {
+            // Draw a starry background
+            ctx.fillStyle = '#0a0a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw some stars
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 100; i++) {
+                const x = (Math.random() * canvas.width + gameState.player.x) % canvas.width;
+                const y = (Math.random() * canvas.height + gameState.player.y) % canvas.height;
+                const size = Math.random() * 2;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawPlayer() {
+            // Draw player
+            ctx.fillStyle = '#d4af37';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, gameState.player.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw player outline
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height / 2, gameState.player.size, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw player stand if active
+            if (gameState.player.standActive && gameState.player.standType) {
+                const standScreenX = canvas.width / 2 + (gameState.player.standX - gameState.player.x);
+                const standScreenY = canvas.height / 2 + (gameState.player.standY - gameState.player.y);
+                
+                ctx.fillStyle = gameState.player.bulletColor;
+                ctx.beginPath();
+                ctx.arc(standScreenX, standScreenY, 30, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Stand name
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(gameState.player.standType, standScreenX, standScreenY - 40);
+                ctx.textAlign = 'left';
+                
+                // Stand aura during barrage
+                if (gameState.player.barrageActive) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(standScreenX, standScreenY, 35, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Draw targeting line to enemy
+                if (gameState.targetedEnemy) {
+                    const enemyScreenX = canvas.width / 2 + (gameState.targetedEnemy.x - gameState.player.x);
+                    const enemyScreenY = canvas.height / 2 + (gameState.targetedEnemy.y - gameState.player.y);
+                    
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(standScreenX, standScreenY);
+                    ctx.lineTo(enemyScreenX, enemyScreenY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background pattern
+            drawBackground();
+            
+            // Draw bullet trails
+            gameState.bulletTrails.forEach(trail => {
+                const alpha = trail.life / 10;
+                ctx.fillStyle = trail.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                ctx.beginPath();
+                ctx.arc(
+                    canvas.width / 2 + (trail.x - gameState.player.x),
+                    canvas.height / 2 + (trail.y - gameState.player.y),
+                    2, 0, Math.PI * 2
+                );
+                ctx.fill();
+            });
+            
+            // Draw healing orbs
+            gameState.healingOrbs.forEach(orb => orb.draw());
+            
+            // Draw blood effects
+            renderBloodEffects();
+            
+            // Draw player
+            drawPlayer();
+            
+            // Draw enemies
+            gameState.enemies.forEach(e => {
+                e.draw();
+                
+                // Highlight hovered enemy
+                if (e === gameState.hoveredEnemy) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2 + (e.x - gameState.player.x), canvas.height / 2 + (e.y - gameState.player.y), e.size + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+            
+            // Draw bullets
+            gameState.bullets.forEach(b => b.draw());
+            
+            // Draw active ability effects
+            gameState.activeAbilities.forEach(ability => {
+                if (ability.type === 'd4c_clone' && ability.clone) {
+                    ability.clone.draw();
+                }
+            });
+        }
+
+        function renderBloodEffects() {
+            gameState.bloodEffects.forEach(blood => blood.draw());
+        }
+
+        // ===== PART MANAGEMENT =====
+        function spawnPart() {
+            gameState.enemies = [];
+            gameState.bossAbilities = [];
+            
+            const isBossPart = gameState.part % CONFIG.boss.bossPartInterval === 0;
+            
+            if (isBossPart) {
+                spawnBoss();
+            } else {
+                spawnRegularEnemies();
+            }
+            
+            updatePartDisplay();
+            
+            gameState.inDowntime = false;
+            gameState.downtimeTimer = 0;
+            gameState.downtimeStarted = false;
+            
+            document.getElementById('status').textContent = '';
+            document.getElementById('skipDowntimeBtn').style.display = 'none';
+            
+            showPartInfo();
+        }
+
+        function spawnBoss() {
+            const bossType = bossTypes.find(b => b.unlockPart === gameState.part) || 
+                             bossTypes[bossTypes.length - 1];
+            const boss = new Enemy(bossType, 
+                                  gameState.player.x + Math.random() * 400 - 200, 
+                                  gameState.player.y + Math.random() * 400 - 200);
+            gameState.enemies.push(boss);
+            
+            showBossAlert(boss);
+        }
+
+        function spawnRegularEnemies() {
+            gameState.damageMultiplier = 1 + (gameState.part - 1) * CONFIG.game.damageMultiplierPerPart;
+            
+            const enemyCount = Math.min(gameState.part * 3, CONFIG.game.maxEnemiesPerPart);
+            const availableEnemies = enemyTypes.filter(e => e.unlockPart <= gameState.part);
+            
+            for (let i = 0; i < enemyCount; i++) {
+                const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
+                const scaledEnemy = scaleEnemyForPart(enemyType);
+                
+                gameState.enemies.push(new Enemy(
+                    scaledEnemy,
+                    gameState.player.x + Math.random() * 800 - 400,
+                    gameState.player.y + Math.random() * 600 - 300
+                ));
+            }
+        }
+
+        function scaleEnemyForPart(enemyType) {
+            const scaledEnemy = Object.assign({}, enemyType);
+            scaledEnemy.maxHP = Math.floor(enemyType.maxHP * (1 + (gameState.part - 1) * 0.05));
+            scaledEnemy.speed = enemyType.speed * (1 + (gameState.part - 1) * 0.05);
+            
+            if (gameState.part > 10) {
+                scaledEnemy.standPowerDrain = enemyType.standPowerDrain * (1 + (gameState.part - 10) * 0.1);
+            }
+            
+            scaledEnemy.id = Math.random().toString(36).substr(2, 9);
+            return scaledEnemy;
+        }
+
+        // ===== UI MANAGEMENT =====
+        function updatePartDisplay() {
+            document.getElementById('part').textContent = gameState.part;
+            document.getElementById('partNum').textContent = gameState.part;
+        }
+
+        function showPartInfo() {
+            document.getElementById('partInfo').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('partInfo').style.display = 'none';
+            }, 2000);
+        }
+
+        function showBossAlert(boss) {
+            document.getElementById('bossAlert').textContent = 
+                `${boss.name} approaches! ${boss.message}`;
+            document.getElementById('bossAlert').style.display = 'block';
+            
+            setTimeout(() => {
+                document.getElementById('bossAlert').style.display = 'none';
+            }, 3000);
+        }
+
+        function updateStandPowerDisplay() {
+            document.getElementById('standPower').textContent = Math.floor(gameState.standPower);
+            document.getElementById('standPowerFill').style.width = `${gameState.standPower}%`;
+            document.getElementById('standPowerText').textContent = `${Math.floor(gameState.standPower)}%`;
+        }
+
+        function toggleUISection() {
+            const abilitiesPassives = document.getElementById('abilitiesPassives');
+            const uiToggle = document.getElementById('uiToggle');
+            const compactKeybinds = document.getElementById('compactKeybinds');
+            
+            if (gameState.uiCollapsed) {
+                abilitiesPassives.classList.remove('collapsed');
+                uiToggle.textContent = '▼ Hide Stand Abilities';
+                compactKeybinds.style.display = 'none';
+            } else {
+                abilitiesPassives.classList.add('collapsed');
+                uiToggle.textContent = '▶ Show Stand Abilities';
+                compactKeybinds.style.display = 'block';
+                updateCompactKeybinds();
+            }
+            
+            gameState.uiCollapsed = !gameState.uiCollapsed;
+        }
+
+        function updateCompactKeybinds() {
+            const container = document.getElementById('compactKeybinds');
+            container.innerHTML = '';
+            
+            playerAbilities.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'compact-key';
+                div.textContent = `[${card.key}] ${card.name}`;
+                
+                if (gameState.abilityCooldowns[card.key] && gameState.abilityCooldowns[card.key] > 0) {
+                    div.style.opacity = '0.5';
+                    div.title = `${card.name} - ${Math.ceil(gameState.abilityCooldowns[card.key] / 60)}s cooldown`;
+                } else {
+                    div.title = card.name;
+                }
+                
+                container.appendChild(div);
+            });
+        }
+
+        // ===== DOWNTIME MANAGEMENT =====
+        function startDowntime() {
+            if (gameState.downtimeStarted) return;
+            
+            gameState.inDowntime = true;
+            gameState.downtimeStarted = true;
+            gameState.downtimeTimer = CONFIG.game.downtimeDuration;
+            
+            document.getElementById('skipDowntimeBtn').style.display = 'inline-block';
+            
+            // Determine which type of stand to offer
+            const standType = Math.random();
+            
+            // 8% chance for legendary stand
+            if (standType < CONFIG.stands.legendaryChance) {
+                offerLegendaryStand();
+            }
+            // 30% chance for special stand (if no stand yet)
+            else if (standType < CONFIG.stands.specialStandChance && playerStands.length === 0) {
+                offerSpecialStand();
+            }
+            else if (gameState.part % CONFIG.stands.passiveStandPart === 0) {
+                offerPassiveSkill();
+            }
+            else if (gameState.part % CONFIG.stands.abilityStandPart === 0 || playerAbilities.length < 2) {
+                offerStandAbility();
+            }
+            else {
+                showRestDowntime();
+            }
+        }
+
+        function showRestDowntime() {
+            document.getElementById('status').textContent = 
+                `Resting... ${Math.ceil(gameState.downtimeTimer / 60)} sec remaining`;
+        }
+
+        function skipDowntime() {
+            gameState.inDowntime = false;
+            gameState.downtimeTimer = 0;
+            gameState.downtimeStarted = false;
+            gameState.part++;
+            spawnPart();
+            gameState.standPower = Math.min(gameState.standPower + CONFIG.game.standPowerRegenPerPart, 
+                                   gameState.player.maxStandPower || 100);
+            document.getElementById('skipDowntimeBtn').style.display = 'none';
+            document.getElementById('status').textContent = '';
+        }
+
+        function endStandDowntime() {
+            gameState.inDowntime = false;
+            gameState.downtimeTimer = 0;
+            gameState.downtimeStarted = false;
+            document.getElementById('skipDowntimeBtn').style.display = 'none';
+            document.getElementById('status').textContent = '';
+            gameState.part++;
+            spawnPart();
+            gameState.standPower = Math.min(gameState.standPower + CONFIG.game.standPowerRegenPerPart, 
+                                   gameState.player.maxStandPower || 100);
+        }
+
+        // ===== SMART STAND SELECTION =====
+        function offerStandAbility() {
+            let availableStands = standAbilities.filter(card => 
+                !playerAbilities.some(ab => ab.key === card.key) &&
+                !gameState.standSelectionHistory.includes(card.name)
+            );
+            
+            // If we've seen all stands, reset the history
+            if (availableStands.length === 0) {
+                gameState.standSelectionHistory = [];
+                availableStands = standAbilities.filter(card => 
+                    !playerAbilities.some(ab => ab.key === card.key)
+                );
+            }
+            
+            if (availableStands.length === 0) {
+                endStandDowntime();
+                return;
+            }
+            
+            let selectedStands = [];
+            for (let i = 0; i < 3 && availableStands.length > 0; i++) {
+                let randomIndex = Math.floor(Math.random() * availableStands.length);
+                selectedStands.push(availableStands[randomIndex]);
+                availableStands.splice(randomIndex, 1);
+            }
+            
+            displayStandOptions(selectedStands, 'ability');
+        }
+
+        function offerPassiveSkill() {
+            let availableSkills = passiveSkills.filter(card => 
+                !playerPassives.some(p => p.name === card.name) &&
+                !gameState.standSelectionHistory.includes(card.name)
+            );
+            
+            if (availableSkills.length === 0) {
+                gameState.standSelectionHistory = [];
+                availableSkills = passiveSkills.filter(card => 
+                    !playerPassives.some(p => p.name === card.name)
+                );
+            }
+            
+            if (availableSkills.length === 0) {
+                endStandDowntime();
+                return;
+            }
+            
+            let selectedSkills = [];
+            for (let i = 0; i < 3 && availableSkills.length > 0; i++) {
+                let randomIndex = Math.floor(Math.random() * availableSkills.length);
+                selectedSkills.push(availableSkills[randomIndex]);
+                availableSkills.splice(randomIndex, 1);
+            }
+            
+            displayStandOptions(selectedSkills, 'passive');
+        }
+
+        function offerSpecialStand() {
+            let availableStands = standAbilities.filter(card => 
+                !playerStands.some(w => w.name === card.name) &&
+                !gameState.standSelectionHistory.includes(card.name)
+            );
+            
+            if (availableStands.length === 0) {
+                gameState.standSelectionHistory = [];
+                availableStands = standAbilities.filter(card => 
+                    !playerStands.some(w => w.name === card.name)
+                );
+            }
+            
+            if (availableStands.length === 0) {
+                endStandDowntime();
+                return;
+            }
+            
+            let selectedStands = [];
+            for (let i = 0; i < 3 && availableStands.length > 0; i++) {
+                let randomIndex = Math.floor(Math.random() * availableStands.length);
+                selectedStands.push(availableStands[randomIndex]);
+                availableStands.splice(randomIndex, 1);
+            }
+            
+            displayStandOptions(selectedStands, 'special');
+        }
+
+        function offerLegendaryStand() {
+            // For now, just offer regular stands
+            offerSpecialStand();
+        }
+
+        function displayStandOptions(stands, type) {
+            document.getElementById('standPopup').style.display = 'block';
+            document.getElementById('skipConfirmation').style.display = 'none';
+            
+            let optionsContainer = document.getElementById('standOptions');
+            optionsContainer.innerHTML = '';
+            
+            stands.forEach((stand, index) => {
+                let optionDiv = document.createElement('div');
+                optionDiv.className = 'stand-option';
+                
+                let abilitiesHTML = '';
+                if (stand.abilities) {
+                    abilitiesHTML = '<div style="margin-top: 10px; font-size: 12px; color: #4ecdc4;">';
+                    stand.abilities.forEach(ability => {
+                        abilitiesHTML += `<div>${ability.key}: ${ability.name}</div>`;
+                    });
+                    abilitiesHTML += '</div>';
+                }
+                
+                optionDiv.innerHTML = `
+                    <div class="stand-emoji">${stand.emoji}</div>
+                    <div class="stand-name">${stand.name}</div>
+                    <div class="stand-desc">${stand.description}</div>
+                    ${abilitiesHTML}
+                    <div class="stand-status">${stand.status || ''}</div>
+                `;
+                
+                optionDiv.addEventListener('click', () => {
+                    if (type === 'ability' || type === 'legendary') {
+                        playerAbilities = stand.abilities.map(ability => ({
+                            ...ability,
+                            card: stand
+                        }));
+                        
+                        // Update key bindings
+                        gameState.keyToAbility = {};
+                        playerAbilities.forEach(ability => {
+                            gameState.keyToAbility[ability.key] = ability;
+                        });
+                    } else if (type === 'passive') {
+                        playerPassives.push(stand);
+                        stand.effect();
+                    } else if (type === 'special') {
+                        playerStands.push(stand);
+                        stand.effect();
+                        gameState.player.standActive = true;
+                    }
+                    
+                    // Add to selection history to prevent duplicates
+                    gameState.standSelectionHistory.push(stand.name);
+                    
+                    if (stand.effect) {
+                        stand.effect();
+                    }
+                    
+                    document.getElementById('standPopup').style.display = 'none';
+                    endStandDowntime();
+                });
+                
+                optionsContainer.appendChild(optionDiv);
+            });
+        }
+
+        function showSkipConfirmation() {
+            document.getElementById('skipConfirmation').style.display = 'block';
+        }
+
+        function confirmSkip() {
+            document.getElementById('standPopup').style.display = 'none';
+            endStandDowntime();
+        }
+
+        function cancelSkip() {
+            document.getElementById('skipConfirmation').style.display = 'none';
+        }
+
+        // ===== INPUT HANDLING =====
+        document.addEventListener('keydown', e => {
+            gameState.keys[e.key] = true;
+            
+            // Skip downtime with spacebar
+            if (e.key === ' ' && gameState.inDowntime) {
+                skipDowntime();
+            }
+            
+            // Quest panel toggle
+            if (e.key === '/') {
+                toggleQuestPanel();
+            }
+            
+            // Inventory panel toggle
+            if (e.key === 'i') {
+                toggleInventoryPanel();
+            }
+            
+            // Achievement panel toggle
+            if (e.key === 'a') {
+                toggleAchievementPanel();
+            }
+            
+            // Ability activation
+            if (gameState.keyToAbility[e.key] && !gameState.inDowntime && !gameState.gameOver) {
+                let ability = gameState.keyToAbility[e.key];
+                
+                if (gameState.abilityCooldowns[ability.key] && gameState.abilityCooldowns[ability.key] > 0) {
+                    return;
+                }
+                
+                gameState.abilityCooldowns[ability.key] = ability.cooldown;
+                ability.effect();
+            }
+            
+            // Barrage activation (hold E)
+            if (e.key === 'e' && gameState.player.standActive && !gameState.inDowntime && !gameState.gameOver) {
+                if (gameState.currentStand && gameState.currentStand.abilities.some(a => a.name.includes('BARRAGE'))) {
+                    gameState.player.barrageActive = true;
+                    gameState.player.barrageTimer = 60;
+                }
+            }
+            
+            // Shooting with Q key
+            if (e.key === 'q' && !gameState.inDowntime && !gameState.gameOver) {
+                gameState.shootKeyPressed = true;
+            }
+        });
+
+        document.addEventListener('keyup', e => {
+            gameState.keys[e.key] = false;
+            
+            if (e.key === 'q') {
+                gameState.shootKeyPressed = false;
+            }
+            
+            if (e.key === 'e') {
+                gameState.player.barrageActive = false;
+            }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            let rect = canvas.getBoundingClientRect();
+            gameState.mouseX = e.clientX - rect.left;
+            gameState.mouseY = e.clientY - rect.top;
+            
+            // Check if hovering over an enemy
+            gameState.hoveredEnemy = null;
+            let worldX = gameState.player.x + (gameState.mouseX - canvas.width / 2);
+            let worldY = gameState.player.y + (gameState.mouseY - canvas.height / 2);
+            
+            for (let enemy of gameState.enemies) {
+                let d = Math.hypot(worldX - enemy.x, worldY - enemy.y);
+                if (d < enemy.size) {
+                    gameState.hoveredEnemy = enemy;
+                    break;
+                }
+            }
+            
+            // Update enemy info panel
+            if (gameState.hoveredEnemy) {
+                document.getElementById('enemyName').textContent = gameState.hoveredEnemy.name;
+                document.getElementById('enemyStats').innerHTML = `
+                    HP: ${Math.floor(gameState.hoveredEnemy.hp)}/${gameState.hoveredEnemy.maxHP}<br>
+                    Speed: ${gameState.hoveredEnemy.speed.toFixed(1)}<br>
+                    Sanity Drain: ${gameState.hoveredEnemy.standPowerDrain}/sec
+                `;
+                document.getElementById('enemyDesc').textContent = gameState.hoveredEnemy.description;
+                document.getElementById('enemyInfo').style.display = 'block';
+            } else {
+                document.getElementById('enemyInfo').style.display = 'none';
+            }
+        });
+
+        // ===== UI TOGGLE FUNCTIONS =====
+        function toggleQuestPanel() {
+            const panel = document.getElementById('questPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') {
+                document.getElementById('inventoryPanel').style.display = 'none';
+                document.getElementById('achievementPanel').style.display = 'none';
+            }
+        }
+
+        function toggleInventoryPanel() {
+            const panel = document.getElementById('inventoryPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') {
+                document.getElementById('questPanel').style.display = 'none';
+                document.getElementById('achievementPanel').style.display = 'none';
+                updateInventoryDisplay();
+            }
+        }
+
+        function toggleAchievementPanel() {
+            const panel = document.getElementById('achievementPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') {
+                document.getElementById('questPanel').style.display = 'none';
+                document.getElementById('inventoryPanel').style.display = 'none';
+                updateAchievementDisplay();
+            }
+        }
+
+        // ===== ACHIEVEMENT SYSTEM =====
+        function unlockAchievement(text) {
+            if (gameState.achievements.includes(text)) return;
+            
+            gameState.achievements.push(text);
+            const achievementPopup = document.getElementById('achievementPopup');
+            document.getElementById('achievementText').textContent = text;
+            achievementPopup.style.display = 'block';
+            
+            setTimeout(() => {
+                achievementPopup.style.display = 'none';
+            }, 3000);
+            
+            updateAchievementDisplay();
+        }
+
+        function updateAchievementDisplay() {
+            const achievementList = document.getElementById('achievementList');
+            achievementList.innerHTML = '';
+            
+            gameState.achievements.forEach(achievement => {
+                const achievementItem = document.createElement('div');
+                achievementItem.className = 'achievement-item';
+                achievementItem.textContent = achievement;
+                achievementList.appendChild(achievementItem);
+            });
+            
+            if (gameState.achievements.length === 0) {
+                achievementList.innerHTML = '<div>No achievements unlocked yet</div>';
+            }
+        }
+
+        // ===== LEADERBOARD FUNCTIONS =====
+        function initializeLeaderboard() {
+            leaderboard = JSON.parse(localStorage.getItem('jojoLeaderboard')) || [];
+            displayLeaderboard();
+        }
+
+        function updateLeaderboard(score, part) {
+            leaderboard.push({ score: score, part: part, date: new Date().toLocaleDateString() });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem('jojoLeaderboard', JSON.stringify(leaderboard));
+            displayLeaderboard();
+        }
+
+        function displayLeaderboard() {
+            const entriesContainer = document.getElementById('leaderboardEntries');
+            entriesContainer.innerHTML = '';
+            
+            leaderboard.forEach((entry, index) => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'leaderboard-entry';
+                entryDiv.innerHTML = `<span>${index + 1}. ${entry.score}</span>`;
+                entriesContainer.appendChild(entryDiv);
+            });
+        }
+
+        function toggleLeaderboard() {
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.style.display = leaderboard.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showLeaderboard() {
+            document.getElementById('leaderboard').style.display = 'block';
+            document.getElementById('deathScreen').style.display = 'none';
+        }
+
+        // ===== DEATH SCREEN =====
+        function showDeathScreen() {
+            gameState.gameOver = true;
+            
+            const score = gameState.score + (gameState.part * 100);
+            updateLeaderboard(score, gameState.part);
+            
+            document.getElementById('deathScreen').style.display = 'flex';
+            document.getElementById('finalPart').textContent = gameState.part;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('deathTip').textContent = joestarMessages[Math.floor(Math.random() * joestarMessages.length)];
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
+        // ===== WINDOW EVENT LISTENERS =====
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Initialize the game
+        initializeGame();
+    </script>
+</body>
+</html>
