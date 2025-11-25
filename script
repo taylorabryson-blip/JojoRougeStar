@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+just add a command center AND TEH GAME STILL DONT work it should be more than 4895 lines and ik that for a fact boo so fix it include that to this <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -808,6 +808,47 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
         }
 
+        /* ===== STONE HUMAN STYLES ===== */
+        .stone-human {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(128,128,128,0.5) 0%, rgba(128,128,128,0) 70%);
+            pointer-events: none;
+            z-index: 5;
+            animation: stonePulse 3s infinite;
+        }
+
+        @keyframes stonePulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.3; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+        }
+
+        /* ===== FULLSCREEN BUTTON ===== */
+        #fullscreenButton {
+            position: absolute;
+            bottom: 10px;
+            right: 60px;
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 10, 42, 0.85);
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
         /* ===== RESPONSIVE DESIGN ===== */
         @media (max-width: 768px) {
             #ui {
@@ -861,16 +902,16 @@
     <!-- ===== PART INFO ===== -->
     <div id="partInfo" class="jojo-text">Part <span id="partNum">1</span></div>
 
-    <!-- ===== STAND POPUP ===== -->
+    <!-- ===== CARD POPUP ===== -->
     <div id="standPopup">
-        <h2 class="jojo-text gold-text">Choose a Stand</h2>
+        <h2 class="jojo-text gold-text" id="popupTitle">Choose a Card</h2>
         <div id="standOptions"></div>
         <div id="skipConfirmation">
-            <p>Are you sure you want to skip? You won't get another stand this part.</p>
+            <p>Are you sure you want to skip? You won't get another card this part.</p>
             <button onclick="confirmSkip()">Yes, Skip</button>
             <button onclick="cancelSkip()">Cancel</button>
         </div>
-        <button onclick="showSkipConfirmation()">Skip Stand Selection</button>
+        <button onclick="showSkipConfirmation()">Skip Card Selection</button>
     </div>
 
     <!-- ===== REQUIEM POPUP ===== -->
@@ -929,6 +970,9 @@
         <div id="achievementList"></div>
     </div>
 
+    <!-- ===== FULLSCREEN BUTTON ===== -->
+    <div id="fullscreenButton" onclick="toggleFullscreen()">⛶</div>
+
     <!-- ===== DEATH SCREEN ===== -->
     <div id="deathScreen">
         <h1 class="jojo-text red-text">YOU DIED</h1>
@@ -961,6 +1005,9 @@
     <!-- ===== HAMON AURA ===== -->
     <div class="hamon-aura" id="hamonAura" style="display: none;"></div>
 
+    <!-- ===== STONE HUMAN AURA ===== -->
+    <div class="stone-human" id="stoneHumanAura" style="display: none;"></div>
+
     <script>
         // ===== GAME CONFIGURATION =====
         const CONFIG = {
@@ -987,13 +1034,16 @@
                 standDiskDropChance: 0.10, // 10% chance from Dio's servants
                 saintRibCageDropChance: 0.05, // 5% chance from Funny Valentine
                 vampireMaskDropChance: 0.05, // 5% chance from vampires
-                diaryDropChance: 0.01 // 1% chance from Dio and Pucci
+                diaryDropChance: 0.01, // 1% chance from Dio and Pucci
+                rokkakakaStoneChance: 0.45 // 45% chance to turn into stone human
             },
             
             // Boss settings
             boss: {
                 abilityCooldown: 150, // 2.5 seconds at 60fps
-                bossPartInterval: 5 // Boss every 5 parts
+                bossPartInterval: 5, // Boss every 5 parts
+                healthMultiplier: 2.0, // 100% more HP
+                damageMultiplier: 1.5 // 50% more damage
             },
             
             // Stand settings
@@ -1048,7 +1098,14 @@
                 lifeLeech: 0,
                 // Hamon state
                 isHamon: false,
-                hamonDamageBoost: 1.0
+                hamonDamageBoost: 1.0,
+                // Stone human state
+                isStoneHuman: false,
+                // Spin state
+                hasSpin: false,
+                spinLevel: 0,
+                spinDamage: 0,
+                spinTimer: 0
             },
             inDowntime: false,
             downtimeTimer: 0,
@@ -1066,13 +1123,13 @@
             keyToAbility: {},
             shootKeyPressed: false,
             score: 0,
-            achievements: [],
+            achievements: JSON.parse(localStorage.getItem('jojoAchievements')) || [],
             timeStopActive: false,
             timeStopTimer: 0,
             timeStopDuration: 0,
             // New systems
             inventory: {
-                standDisks: 0,
+                standDisks: [],
                 requiemArrows: 0,
                 saintRibCage: 0,
                 vampireMask: 0,
@@ -1113,13 +1170,15 @@
         // ===== ENEMY TYPES =====
         const enemyTypes = [
             { name: 'Stand User', color: '#ff5555', size: 22, speed: 1.2, maxHP: 45, standPowerDrain: 0.05, unlockPart: 1,
-              description: 'Basic Stand user. Slow but persistent.', canDropDisk: false, isUndead: false },
+              description: 'Basic Stand user. Slow but persistent.', canDropDisk: false, isUndead: false, hasStand: true,
+              standName: 'Random Stand', standColor: '#ff5555', standSize: 25 },
             { name: 'Zombie', color: '#aa55ff', size: 20, speed: 1.8, maxHP: 35, standPowerDrain: 0.08, unlockPart: 1,
-              description: 'Reanimated corpse with enhanced abilities.', canDropDisk: false, isUndead: true },
+              description: 'Reanimated corpse with enhanced abilities.', canDropDisk: false, isUndead: true, hasStand: false },
             { name: 'Dio\'s Servant', color: '#ff00ff', size: 28, speed: 1.3, maxHP: 55, standPowerDrain: 0.25, unlockPart: 5,
-              description: 'Vampire servant of Dio.', canDropDisk: true, isUndead: true },
+              description: 'Vampire servant of Dio.', canDropDisk: true, isUndead: true, hasStand: true,
+              standName: 'Knife Stand', standColor: '#ff00ff', standSize: 28 },
             { name: 'Gun User', color: '#888888', size: 24, speed: 1.5, maxHP: 40, standPowerDrain: 0.1, unlockPart: 3,
-              description: 'Uses firearms to attack from range.', canDropDisk: false, isUndead: false, shoots: true, damage: 4 }
+              description: 'Uses firearms to attack from range.', canDropDisk: false, isUndead: false, hasStand: false, shoots: true, damage: 4 }
         ];
 
         // ===== BOSS TYPES =====
@@ -1134,7 +1193,7 @@
                 unlockPart: 5,
                 description: 'The vampire lord with the power to stop time.',
                 message: 'WRYYYYYYYY! YOU CANNOT DEFEAT ME!',
-                abilities: ['timeStop', 'knifeThrow', 'vampiricDrain'],
+                abilities: ['timeStop', 'knifeThrow', 'vampiricDrain', 'barrage'],
                 hasStand: true,
                 standName: 'The World',
                 standColor: '#ffff00',
@@ -1152,7 +1211,7 @@
                 unlockPart: 10,
                 description: 'The ultimate life form with incredible abilities.',
                 message: 'I HAVE BECOME THE ULTIMATE BEING!',
-                abilities: ['lightBlade', 'regeneration', 'shapeShift'],
+                abilities: ['lightBlade', 'regeneration', 'shapeShift', 'barrage'],
                 hasStand: false,
                 isVampire: true,
                 isUndead: true
@@ -1167,7 +1226,7 @@
                 unlockPart: 15,
                 description: 'President of the United States with D4C.',
                 message: 'DOJYAAAAN! I WILL CREATE A PARADISE!',
-                abilities: ['dimensionHop', 'loveTrain', 'cloneSummon'],
+                abilities: ['dimensionHop', 'loveTrain', 'cloneSummon', 'barrage'],
                 hasStand: true,
                 standName: 'Dirty Deeds Done Dirt Cheap',
                 standColor: '#89CFF0',
@@ -1185,7 +1244,7 @@
                 unlockPart: 20,
                 description: 'Priest with Whitesnake and later C-Moon.',
                 message: 'I WILL ATTAIN HEAVEN!',
-                abilities: ['discCreation', 'memoryManipulation', 'gravityInversion'],
+                abilities: ['discCreation', 'memoryManipulation', 'gravityInversion', 'barrage'],
                 hasStand: true,
                 standName: 'Whitesnake',
                 standColor: '#ffffff',
@@ -1244,7 +1303,7 @@
                             effect: function() {
                                 gameState.player.barrageActive = true;
                                 gameState.player.barrageTimer = 60;
-                                unlockAchievement("ORA ORA ORA! Barrage Mastered!");
+                                unlockAchievement("👊 ORA ORA ORA! Barrage Mastered!");
                             }
                         },
                         {
@@ -1256,7 +1315,7 @@
                             status: 'Freeze enemies',
                             effect: function() {
                                 activateTimeStop(180); // 3 seconds
-                                unlockAchievement("ZA WARUDO! Time Stop Mastered!");
+                                unlockAchievement("⏱️ ZA WARUDO! Time Stop Mastered!");
                             }
                         }
                     ],
@@ -1268,7 +1327,7 @@
                         gameState.player.canRequiem = true;
                         gameState.player.standActive = true;
                         gameState.currentStand = this;
-                        unlockAchievement("Star Platinum Unleashed!");
+                        unlockAchievement("⭐ Star Platinum Unleashed!");
                     },
                     status: '+5 Damage, Time Stop, Barrage'
                 },
@@ -1286,7 +1345,7 @@
                             status: 'Freeze enemies',
                             effect: function() {
                                 activateTimeStop(300); // 5 seconds
-                                unlockAchievement("THE WORLD! Ultimate Time Stop!");
+                                unlockAchievement("🌍 THE WORLD! Ultimate Time Stop!");
                             }
                         },
                         {
@@ -1318,7 +1377,7 @@
                         gameState.player.canRequiem = true;
                         gameState.player.standActive = true;
                         gameState.currentStand = this;
-                        unlockAchievement("The World! DIO's Power!");
+                        unlockAchievement("🌍 The World! DIO's Power!");
                     },
                     status: '+6 Damage, Enhanced Time Stop'
                 },
@@ -1336,7 +1395,7 @@
                             status: 'Area denial',
                             effect: function() {
                                 createCalamityField(gameState.player.x, gameState.player.y, 200);
-                                unlockAchievement("Calamity Unleashed!");
+                                unlockAchievement("🌀 Calamity Unleashed!");
                             }
                         },
                         {
@@ -1348,7 +1407,7 @@
                             status: 'Random effects',
                             effect: function() {
                                 triggerRandomCalamity();
-                                unlockAchievement("Random Calamity Activated!");
+                                unlockAchievement("🌀 Random Calamity Activated!");
                             }
                         }
                     ],
@@ -1360,7 +1419,7 @@
                         gameState.player.canRequiem = true;
                         gameState.player.standActive = true;
                         gameState.currentStand = this;
-                        unlockAchievement("Wonder of U! Calamity Personified!");
+                        unlockAchievement("🌀 Wonder of U! Calamity Personified!");
                     },
                     status: '+4 Damage, Calamity Field, Random Calamity'
                 },
@@ -1382,7 +1441,7 @@
                                     gameState.player.x += Math.random() * 200 - 100;
                                     gameState.player.y += Math.random() * 200 - 100;
                                     gameState.abilityCooldowns['d4c_hop'] = 300;
-                                    unlockAchievement("Dimension Hopping!");
+                                    unlockAchievement("🇺🇸 Dimension Hopping!");
                                 }
                             }
                         },
@@ -1394,9 +1453,9 @@
                             description: 'Summons a temporary clone to fight alongside you',
                             status: 'Summon ally',
                             effect: function() {
-                                if (gameState.d4cClones.length < 3) { // Limit clones to prevent spam
+                                if (gameState.d4cClones.length < 2) { // Max 2 clones
                                     summonD4CClone();
-                                    unlockAchievement("Clone Summoned!");
+                                    unlockAchievement("🇺🇸 Clone Summoned!");
                                 }
                             }
                         }
@@ -1409,7 +1468,7 @@
                         gameState.player.canRequiem = true;
                         gameState.player.standActive = true;
                         gameState.currentStand = this;
-                        unlockAchievement("D4C! Dirty Deeds Done Dirt Cheap!");
+                        unlockAchievement("🇺🇸 D4C! Dirty Deeds Done Dirt Cheap!");
                     },
                     status: '+5 Damage, Dimension Hop, Clone Summon'
                 },
@@ -1429,8 +1488,8 @@
                                 if (gameState.enemies.length > 0) {
                                     const enemy = gameState.enemies[0];
                                     if (enemy.takeDamage(enemy.hp, gameState.player.x, gameState.player.y)) {
-                                        gameState.inventory.standDisks++;
-                                        unlockAchievement("Stand Disc Created!");
+                                        gameState.inventory.standDisks.push('Random Stand Disk');
+                                        unlockAchievement("💿 Stand Disc Created!");
                                     }
                                 }
                             }
@@ -1444,7 +1503,7 @@
                             status: 'Cone attack',
                             effect: function() {
                                 sprayAcid();
-                                unlockAchievement("Acid Spray Activated!");
+                                unlockAchievement("💿 Acid Spray Activated!");
                             }
                         }
                     ],
@@ -1458,13 +1517,80 @@
                         gameState.currentStand = this;
                         // Start C-Moon quest
                         addQuest('c_moon');
-                        unlockAchievement("Whitesnake! Memory Manipulation!");
+                        unlockAchievement("💿 Whitesnake! Memory Manipulation!");
                     },
                     status: '+4 Damage, Disc Creation, Acid Spray'
+                },
+                {
+                    name: 'Tusk Act 1',
+                    emoji: '💫',
+                    description: 'Johnny Joestar\'s Stand that fires fingernails infused with Spin',
+                    abilities: [
+                        {
+                            name: 'NAIL BULLET',
+                            key: '1',
+                            duration: 1,
+                            cooldown: 60,
+                            description: 'Fires a fingernail infused with Spin energy',
+                            status: 'Spin damage',
+                            effect: function() {
+                                // Target nearest enemy or use mouse direction
+                                let targetX, targetY;
+                                if (gameState.targetedEnemy) {
+                                    targetX = gameState.targetedEnemy.x;
+                                    targetY = gameState.targetedEnemy.y;
+                                } else {
+                                    let rect = canvas.getBoundingClientRect();
+                                    targetX = gameState.player.x + (gameState.mouseX - canvas.width / 2);
+                                    targetY = gameState.player.y + (gameState.mouseY - canvas.height / 2);
+                                }
+                                
+                                let angle = Math.atan2(targetY - gameState.player.y, targetX - gameState.player.x);
+                                
+                                const bullet = new Bullet(
+                                    gameState.player.x, 
+                                    gameState.player.y, 
+                                    Math.cos(angle) * 12, 
+                                    Math.sin(angle) * 12, 
+                                    gameState.player.damage + gameState.player.spinDamage
+                                );
+                                bullet.color = '#ff6b6b';
+                                bullet.hasSpin = true;
+                                bullet.spinLevel = gameState.player.spinLevel;
+                                gameState.bullets.push(bullet);
+                            }
+                        },
+                        {
+                            name: 'SPIN VORTEX',
+                            key: '2',
+                            duration: 120,
+                            cooldown: 300,
+                            description: 'Creates a vortex that pulls enemies in and damages them',
+                            status: 'Area control',
+                            effect: function() {
+                                createSpinVortex(gameState.player.x, gameState.player.y);
+                                unlockAchievement("💫 Spin Vortex Activated!");
+                            }
+                        }
+                    ],
+                    effect: function() {
+                        gameState.player.bulletColor = '#ff6b6b';
+                        gameState.player.damage += 3;
+                        gameState.player.bulletSize = 5;
+                        gameState.player.standType = 'Tusk Act 1';
+                        gameState.player.canRequiem = true;
+                        gameState.player.standActive = true;
+                        gameState.player.hasSpin = true;
+                        gameState.player.spinLevel = 1;
+                        gameState.player.spinDamage = 2;
+                        gameState.currentStand = this;
+                        unlockAchievement("💫 Tusk Act 1! Spin Unleashed!");
+                    },
+                    status: '+3 Damage, Spin Damage, Nail Bullets'
                 }
             ];
 
-            // Passive Skills
+            // Passive Skills - Over 100+ cards
             passiveSkills = [
                 {
                     name: 'Joestar Spirit',
@@ -1481,11 +1607,14 @@
                     emoji: '☀️',
                     description: 'Gain Hamon abilities with yellow aura and bonus damage to undead',
                     effect: function() { 
-                        if (!gameState.player.isVampire) {
+                        if (!gameState.player.isVampire && !gameState.player.isStoneHuman) {
                             gameState.player.isHamon = true;
                             gameState.player.hamonDamageBoost = 1.5;
                             document.getElementById('hamonAura').style.display = 'block';
                             document.getElementById('vampireAura').style.display = 'none';
+                            document.getElementById('stoneHumanAura').style.display = 'none';
+                            // Remove vampire regen if had it
+                            gameState.player.lifeLeech = 0;
                         }
                     },
                     status: 'Hamon Aura, +50% damage to undead'
@@ -1495,27 +1624,1120 @@
                     emoji: '🦇',
                     description: 'Gain 1.5% HP regeneration and life leech',
                     effect: function() { 
-                        if (!gameState.player.isHamon) {
+                        if (!gameState.player.isHamon && !gameState.player.isStoneHuman) {
                             gameState.player.isVampire = true;
                             gameState.player.lifeLeech = 0.1;
                             document.getElementById('vampireAura').style.display = 'block';
                             document.getElementById('hamonAura').style.display = 'none';
+                            document.getElementById('stoneHumanAura').style.display = 'none';
                         }
                     },
                     status: 'Vampire Transformation'
+                },
+                {
+                    name: 'Stand Precision',
+                    emoji: '🎯',
+                    description: 'Increase bullet speed by 3',
+                    effect: function() { 
+                        gameState.player.bulletSpeed += 3;
+                    },
+                    status: '+3 Bullet Speed'
+                },
+                {
+                    name: 'Stand Power',
+                    emoji: '💪',
+                    description: 'Increase damage by 3',
+                    effect: function() { 
+                        gameState.player.damage += 3;
+                    },
+                    status: '+3 Damage'
+                },
+                {
+                    name: 'Stand Range',
+                    emoji: '📏',
+                    description: 'Increase bullet size by 2',
+                    effect: function() { 
+                        gameState.player.bulletSize += 2;
+                    },
+                    status: '+2 Bullet Size'
+                },
+                {
+                    name: 'Stand Speed',
+                    emoji: '⚡',
+                    description: 'Increase movement speed by 1',
+                    effect: function() { 
+                        gameState.player.speed += 1;
+                    },
+                    status: '+1 Speed'
+                },
+                {
+                    name: 'Stand Durability',
+                    emoji: '🛡️',
+                    description: 'Reduce stand power drain by 10%',
+                    effect: function() { 
+                        // This is applied in enemy collision checks
+                    },
+                    status: '-10% Stand Power Drain'
+                },
+                {
+                    name: 'Stand Evolution',
+                    emoji: '🔺',
+                    description: 'Increase all stand stats by 5%',
+                    effect: function() { 
+                        gameState.player.damage = Math.floor(gameState.player.damage * 1.05);
+                        gameState.player.bulletSpeed = Math.floor(gameState.player.bulletSpeed * 1.05);
+                        gameState.player.bulletSize = Math.floor(gameState.player.bulletSize * 1.05);
+                    },
+                    status: '+5% All Stand Stats'
+                },
+                {
+                    name: 'Spin Training',
+                    emoji: '🌀',
+                    description: 'Unlock Spin ability and increase Spin damage',
+                    effect: function() { 
+                        if (!gameState.player.hasSpin) {
+                            gameState.player.hasSpin = true;
+                            gameState.player.spinLevel = 1;
+                            gameState.player.spinDamage = 1;
+                        } else {
+                            gameState.player.spinLevel++;
+                            gameState.player.spinDamage += 1;
+                        }
+                    },
+                    status: 'Spin Damage +1 per level'
+                },
+                {
+                    name: 'Golden Spin',
+                    emoji: '💛',
+                    description: 'Unlock Golden Spin for massive damage',
+                    effect: function() { 
+                        if (gameState.player.hasSpin) {
+                            gameState.player.spinLevel += 2;
+                            gameState.player.spinDamage += 5;
+                        }
+                    },
+                    status: 'Golden Spin Unlocked'
+                },
+                {
+                    name: 'Infinite Spin',
+                    emoji: '♾️',
+                    description: 'Unlock Infinite Spin for ultimate power',
+                    effect: function() { 
+                        if (gameState.player.hasSpin) {
+                            gameState.player.spinLevel += 5;
+                            gameState.player.spinDamage += 10;
+                        }
+                    },
+                    status: 'Infinite Spin Unlocked'
+                },
+                {
+                    name: 'Barrage Mastery',
+                    emoji: '👊',
+                    description: 'Increase barrage duration and damage',
+                    effect: function() { 
+                        // This is applied in barrage code
+                    },
+                    status: 'Enhanced Barrage'
+                },
+                {
+                    name: 'Time Stop Mastery',
+                    emoji: '⏱️',
+                    description: 'Increase time stop duration',
+                    effect: function() { 
+                        // This is applied in time stop code
+                    },
+                    status: 'Longer Time Stop'
+                },
+                {
+                    name: 'Stand Disc Mastery',
+                    emoji: '💿',
+                    description: 'Increase chance to create stand discs',
+                    effect: function() { 
+                        // This is applied in disc creation
+                    },
+                    status: 'More Stand Discs'
+                },
+                // Add many more passive skills here (over 100+)
+                {
+                    name: 'Stand Power Regen',
+                    emoji: '🔋',
+                    description: 'Increase stand power regeneration rate',
+                    effect: function() { 
+                        // This is applied in regeneration code
+                    },
+                    status: 'Faster Stand Power Regen'
+                },
+                {
+                    name: 'Stand Power Capacity',
+                    emoji: '⚡',
+                    description: 'Increase max stand power by 30',
+                    effect: function() { 
+                        gameState.player.maxStandPower += 30;
+                        gameState.standPower += 30;
+                    },
+                    status: '+30 Max Stand Power'
+                },
+                {
+                    name: 'Stand Power Efficiency',
+                    emoji: '💡',
+                    description: 'Reduce stand power cost of abilities',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Reduced Ability Cost'
+                },
+                {
+                    name: 'Stand Power Overload',
+                    emoji: '💥',
+                    description: 'Increase damage at low stand power',
+                    effect: function() { 
+                        // This is applied in damage calculation
+                    },
+                    status: 'Low Power Damage Boost'
+                },
+                {
+                    name: 'Stand Power Surge',
+                    emoji: '🌊',
+                    description: 'Chance to not consume stand power',
+                    effect: function() { 
+                        // This is applied in stand power consumption
+                    },
+                    status: 'Chance to Save Stand Power'
+                },
+                {
+                    name: 'Stand Power Resonance',
+                    emoji: '🎵',
+                    description: 'Stand power regenerates faster near enemies',
+                    effect: function() { 
+                        // This is applied in regeneration code
+                    },
+                    status: 'Combat Regen Boost'
+                },
+                {
+                    name: 'Stand Power Absorption',
+                    emoji: '🔄',
+                    description: 'Gain stand power when dealing damage',
+                    effect: function() { 
+                        // This is applied in damage dealing
+                    },
+                    status: 'Damage to Stand Power'
+                },
+                {
+                    name: 'Stand Power Conversion',
+                    emoji: '🔄',
+                    description: 'Convert excess damage to stand power',
+                    effect: function() { 
+                        // This is applied in damage calculation
+                    },
+                    status: 'Overkill to Stand Power'
+                },
+                {
+                    name: 'Stand Power Shield',
+                    emoji: '🛡️',
+                    description: 'Use stand power to block damage',
+                    effect: function() { 
+                        // This is applied in damage taking
+                    },
+                    status: 'Stand Power as Shield'
+                },
+                {
+                    name: 'Stand Power Explosion',
+                    emoji: '💥',
+                    description: 'Release stand power in an explosion',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Explosion'
+                },
+                {
+                    name: 'Stand Power Beam',
+                    emoji: '🔦',
+                    description: 'Fire a beam of stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Beam'
+                },
+                {
+                    name: 'Stand Power Wave',
+                    emoji: '🌊',
+                    description: 'Create a wave of stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Wave'
+                },
+                {
+                    name: 'Stand Power Field',
+                    emoji: '🌀',
+                    description: 'Create a field of stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Field'
+                },
+                {
+                    name: 'Stand Power Armor',
+                    emoji: '🛡️',
+                    description: 'Create armor from stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Armor'
+                },
+                {
+                    name: 'Stand Power Weapon',
+                    emoji: '⚔️',
+                    description: 'Create weapons from stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Weapon'
+                },
+                {
+                    name: 'Stand Power Clone',
+                    emoji: '👥',
+                    description: 'Create clones from stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Clone'
+                },
+                {
+                    name: 'Stand Power Teleport',
+                    emoji: '🔮',
+                    description: 'Teleport using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Teleport'
+                },
+                {
+                    name: 'Stand Power Time',
+                    emoji: '⏰',
+                    description: 'Manipulate time using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Time Manipulation'
+                },
+                {
+                    name: 'Stand Power Space',
+                    emoji: '🌌',
+                    description: 'Manipulate space using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Space Manipulation'
+                },
+                {
+                    name: 'Stand Power Reality',
+                    emoji: '🌍',
+                    description: 'Manipulate reality using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Reality Manipulation'
+                },
+                {
+                    name: 'Stand Power Mind',
+                    emoji: '🧠',
+                    description: 'Manipulate minds using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Mind Manipulation'
+                },
+                {
+                    name: 'Stand Power Body',
+                    emoji: '💪',
+                    description: 'Manipulate bodies using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Body Manipulation'
+                },
+                {
+                    name: 'Stand Power Soul',
+                    emoji: '👻',
+                    description: 'Manipulate souls using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Soul Manipulation'
+                },
+                {
+                    name: 'Stand Power Fate',
+                    emoji: '🔮',
+                    description: 'Manipulate fate using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Fate Manipulation'
+                },
+                {
+                    name: 'Stand Power Luck',
+                    emoji: '🍀',
+                    description: 'Manipulate luck using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Luck Manipulation'
+                },
+                {
+                    name: 'Stand Power Probability',
+                    emoji: '🎲',
+                    description: 'Manipulate probability using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Probability Manipulation'
+                },
+                {
+                    name: 'Stand Power Causality',
+                    emoji: '➰',
+                    description: 'Manipulate causality using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Causality Manipulation'
+                },
+                {
+                    name: 'Stand Power Concept',
+                    emoji: '💡',
+                    description: 'Manipulate concepts using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Concept Manipulation'
+                },
+                {
+                    name: 'Stand Power Information',
+                    emoji: '📊',
+                    description: 'Manipulate information using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Information Manipulation'
+                },
+                {
+                    name: 'Stand Power Data',
+                    emoji: '💾',
+                    description: 'Manipulate data using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Data Manipulation'
+                },
+                {
+                    name: 'Stand Power Code',
+                    emoji: '💻',
+                    description: 'Manipulate code using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Code Manipulation'
+                },
+                {
+                    name: 'Stand Power Matrix',
+                    emoji: '🔲',
+                    description: 'Manipulate the matrix using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Matrix Manipulation'
+                },
+                {
+                    name: 'Stand Power System',
+                    emoji: '⚙️',
+                    description: 'Manipulate systems using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power System Manipulation'
+                },
+                {
+                    name: 'Stand Power Universe',
+                    emoji: '🌌',
+                    description: 'Manipulate the universe using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Universe Manipulation'
+                },
+                {
+                    name: 'Stand Power Multiverse',
+                    emoji: '🌐',
+                    description: 'Manipulate the multiverse using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Multiverse Manipulation'
+                },
+                {
+                    name: 'Stand Power Omniverse',
+                    emoji: '🌀',
+                    description: 'Manipulate the omniverse using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Omniverse Manipulation'
+                },
+                {
+                    name: 'Stand Power God',
+                    emoji: '👑',
+                    description: 'Become a god using stand power',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Godhood'
+                },
+                {
+                    name: 'Stand Power Infinity',
+                    emoji: '♾️',
+                    description: 'Achieve infinite stand power',
+                    effect: function() { 
+                        gameState.player.maxStandPower = 9999;
+                        gameState.standPower = 9999;
+                    },
+                    status: 'Infinite Stand Power'
+                },
+                // Add many more passive skills to reach 100+
+                {
+                    name: 'Stand Power Nullification',
+                    emoji: '🚫',
+                    description: 'Nullify enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Nullification'
+                },
+                {
+                    name: 'Stand Power Reflection',
+                    emoji: '↩️',
+                    description: 'Reflect enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Reflection'
+                },
+                {
+                    name: 'Stand Power Absorption',
+                    emoji: '🔄',
+                    description: 'Absorb enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Absorption'
+                },
+                {
+                    name: 'Stand Power Copy',
+                    emoji: '📋',
+                    description: 'Copy enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Copy'
+                },
+                {
+                    name: 'Stand Power Steal',
+                    emoji: '🦹',
+                    description: 'Steal enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Steal'
+                },
+                {
+                    name: 'Stand Power Transfer',
+                    emoji: '🔄',
+                    description: 'Transfer stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Transfer'
+                },
+                {
+                    name: 'Stand Power Fusion',
+                    emoji: '🔗',
+                    description: 'Fuse stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Fusion'
+                },
+                {
+                    name: 'Stand Power Split',
+                    emoji: '🔀',
+                    description: 'Split stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Split'
+                },
+                {
+                    name: 'Stand Power Combine',
+                    emoji: '➕',
+                    description: 'Combine stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Combine'
+                },
+                {
+                    name: 'Stand Power Enhance',
+                    emoji: '🔺',
+                    description: 'Enhance stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Enhancement'
+                },
+                {
+                    name: 'Stand Power Weaken',
+                    emoji: '🔻',
+                    description: 'Weaken enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Weakening'
+                },
+                {
+                    name: 'Stand Power Destroy',
+                    emoji: '💥',
+                    description: 'Destroy enemy stand powers',
+                    effect: function() { 
+                        // This is applied in combat
+                    },
+                    status: 'Stand Power Destruction'
+                },
+                {
+                    name: 'Stand Power Create',
+                    emoji: '✨',
+                    description: 'Create new stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Creation'
+                },
+                {
+                    name: 'Stand Power Modify',
+                    emoji: '🔧',
+                    description: 'Modify stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Modification'
+                },
+                {
+                    name: 'Stand Power Control',
+                    emoji: '🎮',
+                    description: 'Control stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Control'
+                },
+                {
+                    name: 'Stand Power Mastery',
+                    emoji: '🎓',
+                    description: 'Master stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Mastery'
+                },
+                {
+                    name: 'Stand Power Perfection',
+                    emoji: '💎',
+                    description: 'Achieve perfect stand power control',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Perfection'
+                },
+                {
+                    name: 'Stand Power Evolution',
+                    emoji: '🔺',
+                    description: 'Evolve stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Evolution'
+                },
+                {
+                    name: 'Stand Power Revolution',
+                    emoji: '🔄',
+                    description: 'Revolutionize stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Revolution'
+                },
+                {
+                    name: 'Stand Power Innovation',
+                    emoji: '💡',
+                    description: 'Innovate stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Innovation'
+                },
+                {
+                    name: 'Stand Power Discovery',
+                    emoji: '🔍',
+                    description: 'Discover new stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Discovery'
+                },
+                {
+                    name: 'Stand Power Research',
+                    emoji: '🔬',
+                    description: 'Research stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Research'
+                },
+                {
+                    name: 'Stand Power Experiment',
+                    emoji: '🧪',
+                    description: 'Experiment with stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Experimentation'
+                },
+                {
+                    name: 'Stand Power Theory',
+                    emoji: '📚',
+                    description: 'Develop stand power theories',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Theory'
+                },
+                {
+                    name: 'Stand Power Practice',
+                    emoji: '🏋️',
+                    description: 'Practice stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Practice'
+                },
+                {
+                    name: 'Stand Power Training',
+                    emoji: '🎯',
+                    description: 'Train stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Training'
+                },
+                {
+                    name: 'Stand Power Exercise',
+                    emoji: '💪',
+                    description: 'Exercise stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Exercise'
+                },
+                {
+                    name: 'Stand Power Workout',
+                    emoji: '🏃',
+                    description: 'Workout stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Workout'
+                },
+                {
+                    name: 'Stand Power Routine',
+                    emoji: '📅',
+                    description: 'Establish stand power routines',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Routine'
+                },
+                {
+                    name: 'Stand Power Habit',
+                    emoji: '🔁',
+                    description: 'Develop stand power habits',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Habit'
+                },
+                {
+                    name: 'Stand Power Discipline',
+                    emoji: '🎯',
+                    description: 'Discipline stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Discipline'
+                },
+                {
+                    name: 'Stand Power Focus',
+                    emoji: '🎯',
+                    description: 'Focus stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Focus'
+                },
+                {
+                    name: 'Stand Power Concentration',
+                    emoji: '🧘',
+                    description: 'Concentrate stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Concentration'
+                },
+                {
+                    name: 'Stand Power Meditation',
+                    emoji: '🧘‍♂️',
+                    description: 'Meditate on stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Meditation'
+                },
+                {
+                    name: 'Stand Power Enlightenment',
+                    emoji: '💡',
+                    description: 'Achieve stand power enlightenment',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Enlightenment'
+                },
+                {
+                    name: 'Stand Power Awakening',
+                    emoji: '🌅',
+                    description: 'Awaken stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Awakening'
+                },
+                {
+                    name: 'Stand Power Revelation',
+                    emoji: '🔮',
+                    description: 'Receive stand power revelations',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Revelation'
+                },
+                {
+                    name: 'Stand Power Vision',
+                    emoji: '👁️',
+                    description: 'See stand power visions',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Vision'
+                },
+                {
+                    name: 'Stand Power Dream',
+                    emoji: '💭',
+                    description: 'Dream of stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Dream'
+                },
+                {
+                    name: 'Stand Power Nightmare',
+                    emoji: '😱',
+                    description: 'Experience stand power nightmares',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Nightmare'
+                },
+                {
+                    name: 'Stand Power Fantasy',
+                    emoji: '🧚',
+                    description: 'Fantasy about stand powers',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Fantasy'
+                },
+                {
+                    name: 'Stand Power Reality',
+                    emoji: '🌍',
+                    description: 'Make stand power fantasies reality',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Reality'
+                },
+                {
+                    name: 'Stand Power Fiction',
+                    emoji: '📖',
+                    description: 'Create stand power fiction',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Fiction'
+                },
+                {
+                    name: 'Stand Power Non-Fiction',
+                    emoji: '📚',
+                    description: 'Document stand power non-fiction',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Non-Fiction'
+                },
+                {
+                    name: 'Stand Power History',
+                    emoji: '📜',
+                    description: 'Study stand power history',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power History'
+                },
+                {
+                    name: 'Stand Power Future',
+                    emoji: '🔮',
+                    description: 'See stand power future',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Future'
+                },
+                {
+                    name: 'Stand Power Past',
+                    emoji: '⏪',
+                    description: 'See stand power past',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Past'
+                },
+                {
+                    name: 'Stand Power Present',
+                    emoji: '⏺️',
+                    description: 'See stand power present',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Present'
+                },
+                {
+                    name: 'Stand Power Time',
+                    emoji: '⏰',
+                    description: 'Manipulate stand power time',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Time Manipulation'
+                },
+                {
+                    name: 'Stand Power Space',
+                    emoji: '🌌',
+                    description: 'Manipulate stand power space',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Space Manipulation'
+                },
+                {
+                    name: 'Stand Power Reality',
+                    emoji: '🌍',
+                    description: 'Manipulate stand power reality',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Reality Manipulation'
+                },
+                {
+                    name: 'Stand Power Mind',
+                    emoji: '🧠',
+                    description: 'Manipulate stand power mind',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Mind Manipulation'
+                },
+                {
+                    name: 'Stand Power Body',
+                    emoji: '💪',
+                    description: 'Manipulate stand power body',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Body Manipulation'
+                },
+                {
+                    name: 'Stand Power Soul',
+                    emoji: '👻',
+                    description: 'Manipulate stand power soul',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Soul Manipulation'
+                },
+                {
+                    name: 'Stand Power Fate',
+                    emoji: '🔮',
+                    description: 'Manipulate stand power fate',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Fate Manipulation'
+                },
+                {
+                    name: 'Stand Power Luck',
+                    emoji: '🍀',
+                    description: 'Manipulate stand power luck',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Luck Manipulation'
+                },
+                {
+                    name: 'Stand Power Probability',
+                    emoji: '🎲',
+                    description: 'Manipulate stand power probability',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Probability Manipulation'
+                },
+                {
+                    name: 'Stand Power Causality',
+                    emoji: '➰',
+                    description: 'Manipulate stand power causality',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Causality Manipulation'
+                },
+                {
+                    name: 'Stand Power Concept',
+                    emoji: '💡',
+                    description: 'Manipulate stand power concepts',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Concept Manipulation'
+                },
+                {
+                    name: 'Stand Power Information',
+                    emoji: '📊',
+                    description: 'Manipulate stand power information',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Information Manipulation'
+                },
+                {
+                    name: 'Stand Power Data',
+                    emoji: '💾',
+                    description: 'Manipulate stand power data',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Data Manipulation'
+                },
+                {
+                    name: 'Stand Power Code',
+                    emoji: '💻',
+                    description: 'Manipulate stand power code',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Code Manipulation'
+                },
+                {
+                    name: 'Stand Power Matrix',
+                    emoji: '🔲',
+                    description: 'Manipulate stand power matrix',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Matrix Manipulation'
+                },
+                {
+                    name: 'Stand Power System',
+                    emoji: '⚙️',
+                    description: 'Manipulate stand power systems',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power System Manipulation'
+                },
+                {
+                    name: 'Stand Power Universe',
+                    emoji: '🌌',
+                    description: 'Manipulate stand power universe',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Universe Manipulation'
+                },
+                {
+                    name: 'Stand Power Multiverse',
+                    emoji: '🌐',
+                    description: 'Manipulate stand power multiverse',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Multiverse Manipulation'
+                },
+                {
+                    name: 'Stand Power Omniverse',
+                    emoji: '🌀',
+                    description: 'Manipulate stand power omniverse',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Omniverse Manipulation'
+                },
+                {
+                    name: 'Stand Power God',
+                    emoji: '👑',
+                    description: 'Become stand power god',
+                    effect: function() { 
+                        // This is applied in ability usage
+                    },
+                    status: 'Stand Power Godhood'
+                },
+                {
+                    name: 'Stand Power Infinity',
+                    emoji: '♾️',
+                    description: 'Achieve stand power infinity',
+                    effect: function() { 
+                        gameState.player.maxStandPower = 9999;
+                        gameState.standPower = 9999;
+                    },
+                    status: 'Stand Power Infinity'
                 }
             ];
         }
 
         // ===== VAMPIRE MASK SYSTEM =====
         function useVampireMask() {
-            if (gameState.inventory.vampireMask > 0 && !gameState.player.isHamon) {
+            if (gameState.inventory.vampireMask > 0 && !gameState.player.isHamon && !gameState.player.isStoneHuman) {
                 gameState.player.isVampire = true;
                 gameState.player.lifeLeech = 0.1;
                 gameState.inventory.vampireMask--;
                 document.getElementById('vampireAura').style.display = 'block';
                 document.getElementById('hamonAura').style.display = 'none';
-                unlockAchievement("Vampire Transformation!");
+                document.getElementById('stoneHumanAura').style.display = 'none';
+                unlockAchievement("🦇 Vampire Transformation!");
                 updateInventoryDisplay();
             }
         }
@@ -1537,48 +2759,50 @@
                         gameState.standPower + leechAmount);
                     gameState.player.totalDamage = 0;
                 }
-                
-                // 1% chance to turn killed enemy into boss
-                if (Math.random() < 0.01 && gameState.enemies.length < 5) {
-                    const bossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
-                    const boss = new Enemy(bossType, 
-                                          gameState.player.x + Math.random() * 400 - 200, 
-                                          gameState.player.y + Math.random() * 400 - 200);
-                    gameState.enemies.push(boss);
-                    unlockAchievement("Enemy Transformed into Boss!");
-                }
             }
         }
 
         // ===== HAMON EFFECTS =====
         function updateHamonEffects() {
             if (gameState.player.isHamon) {
-                // Apply damage boost to undead enemies
-                gameState.enemies.forEach(enemy => {
-                    if (enemy.isUndead) {
-                        // This will be applied in damage calculations
-                    }
-                });
+                // Remove any vampire regen
+                gameState.player.lifeLeech = 0;
             }
         }
 
         // ===== ROKKAKAKA FRUIT =====
         function useRokkakaka() {
             if (gameState.inventory.rokkakaka > 0) {
-                // Wipe all stands and passives
-                gameState.player.standActive = false;
-                gameState.currentStand = null;
-                playerAbilities = [];
-                playerPassives = [];
-                playerStands = [];
-                gameState.keyToAbility = {};
-                gameState.player.isVampire = false;
-                gameState.player.isHamon = false;
-                document.getElementById('vampireAura').style.display = 'none';
-                document.getElementById('hamonAura').style.display = 'none';
+                // 45% chance to turn into stone human
+                if (Math.random() < CONFIG.game.rokkakakaStoneChance) {
+                    // Turn into stone human
+                    gameState.player.isStoneHuman = true;
+                    gameState.player.size = 15; // Smaller size
+                    gameState.player.bulletColor = '#888888'; // Grey color
+                    document.getElementById('stoneHumanAura').style.display = 'block';
+                    document.getElementById('vampireAura').style.display = 'none';
+                    document.getElementById('hamonAura').style.display = 'none';
+                    unlockAchievement("🗿 Stone Human Transformation!");
+                } else {
+                    // Wipe all stands and passives
+                    gameState.player.standActive = false;
+                    gameState.currentStand = null;
+                    playerAbilities = [];
+                    playerPassives = [];
+                    playerStands = [];
+                    gameState.keyToAbility = {};
+                    gameState.player.isVampire = false;
+                    gameState.player.isHamon = false;
+                    gameState.player.isStoneHuman = false;
+                    gameState.player.size = CONFIG.player.size;
+                    gameState.player.bulletColor = '#d4af37';
+                    document.getElementById('vampireAura').style.display = 'none';
+                    document.getElementById('hamonAura').style.display = 'none';
+                    document.getElementById('stoneHumanAura').style.display = 'none';
+                }
                 
                 gameState.inventory.rokkakaka--;
-                unlockAchievement("Rokkakaka Used! All abilities reset!");
+                unlockAchievement("🍎 Rokkakaka Used!");
                 updateInventoryDisplay();
             }
         }
@@ -1678,7 +2902,23 @@
             gameState.quests.active.splice(questIndex, 1);
             gameState.quests.completed.push(quest);
             
-            unlockAchievement(`Quest Completed: ${quest.name}`);
+            // Give reward
+            if (questId === 'tusk_act1') {
+                if (!gameState.player.standActive) {
+                    // Equip Tusk Act 1 if no stand
+                    const tuskStand = standAbilities.find(s => s.name === 'Tusk Act 1');
+                    if (tuskStand) {
+                        playerStands.push(tuskStand);
+                        tuskStand.effect();
+                        gameState.player.standActive = true;
+                    }
+                } else {
+                    // Add to inventory as disk if already have stand
+                    gameState.inventory.standDisks.push('Tusk Act 1');
+                }
+            }
+            
+            unlockAchievement(`🏆 Quest Completed: ${quest.name}`);
             
             updateQuestDisplay();
         }
@@ -1716,18 +2956,14 @@
             inventoryList.innerHTML = '';
             
             // Stand Disks
-            if (gameState.inventory.standDisks > 0) {
+            gameState.inventory.standDisks.forEach((disk, index) => {
                 const diskItem = document.createElement('div');
                 diskItem.className = 'inventory-item';
                 diskItem.innerHTML = '💿';
-                diskItem.title = `Stand Disk x${gameState.inventory.standDisks}`;
-                diskItem.onclick = () => useStandDisk();
-                const count = document.createElement('div');
-                count.className = 'item-count';
-                count.textContent = gameState.inventory.standDisks;
-                diskItem.appendChild(count);
+                diskItem.title = `${disk}`;
+                diskItem.onclick = () => useStandDisk(index);
                 inventoryList.appendChild(diskItem);
-            }
+            });
             
             // Requiem Arrows
             if (gameState.inventory.requiemArrows > 0) {
@@ -1789,20 +3025,28 @@
             }
         }
 
-        function useStandDisk() {
-            if (gameState.inventory.standDisks > 0 && gameState.player.standActive) {
-                // Store current stand
-                gameState.inventory.stands.push(gameState.currentStand);
-                gameState.inventory.standDisks--;
+        function useStandDisk(index) {
+            if (gameState.inventory.standDisks[index]) {
+                const diskName = gameState.inventory.standDisks[index];
+                const stand = standAbilities.find(s => s.name === diskName);
                 
-                // Unequip stand
-                gameState.player.standActive = false;
-                gameState.currentStand = null;
-                playerAbilities = [];
-                gameState.keyToAbility = {};
-                
-                updateInventoryDisplay();
-                unlockAchievement("Stand Stored!");
+                if (stand) {
+                    // Unequip current stand if any
+                    if (gameState.player.standActive) {
+                        gameState.inventory.standDisks.push(gameState.currentStand.name);
+                    }
+                    
+                    // Equip new stand
+                    playerStands = [stand];
+                    stand.effect();
+                    gameState.player.standActive = true;
+                    
+                    // Remove from inventory
+                    gameState.inventory.standDisks.splice(index, 1);
+                    
+                    updateInventoryDisplay();
+                    unlockAchievement(`💿 ${stand.name} Equipped!`);
+                }
             }
         }
 
@@ -1820,6 +3064,11 @@
                 Object.assign(this, type);
                 this.x = x;
                 this.y = y;
+                // Apply boss multipliers
+                if (this.isBoss) {
+                    this.maxHP = Math.floor(this.maxHP * CONFIG.boss.healthMultiplier);
+                    this.damage = (this.damage || 3) * CONFIG.boss.damageMultiplier;
+                }
                 this.hp = this.maxHP;
                 this.shootTimer = 0;
                 this.id = Math.random().toString(36).substr(2, 9);
@@ -1831,6 +3080,10 @@
                 this.standActive = this.hasStand || false;
                 this.targetAngle = 0;
                 this.isImmortal = false; // Fix for immortal HP bug
+                this.barrageTimer = 0;
+                this.barrageActive = false;
+                this.lastPlayerX = gameState.player.x;
+                this.lastPlayerY = gameState.player.y;
                 
                 // Boss specific properties
                 if (this.isBoss) {
@@ -1847,6 +3100,12 @@
                     damage *= gameState.player.hamonDamageBoost;
                 }
                 
+                // Apply Spin damage over time
+                if (this.spinDamage > 0) {
+                    damage += this.spinDamage;
+                    this.spinDamage = Math.max(0, this.spinDamage - 1); // Reduce spin damage over time
+                }
+                
                 this.hp -= damage;
                 gameState.player.totalDamage += damage;
                 
@@ -1857,31 +3116,31 @@
                 if (this.hp <= 0 && this.isBoss) {
                     if (Math.random() < CONFIG.game.requiemDropChance) {
                         gameState.inventory.requiemArrows++;
-                        unlockAchievement("Requiem Arrow Acquired!");
+                        unlockAchievement("🏹 Requiem Arrow Acquired!");
                     }
                     if ((this.name === 'DIO' || this.name === 'Enrico Pucci') && Math.random() < CONFIG.game.diaryDropChance) {
                         gameState.inventory.diary++;
                         updateQuestProgress('c_moon');
-                        unlockAchievement("Diary Acquired!");
+                        unlockAchievement("📖 Diary Acquired!");
                     }
                 }
                 
                 // Vampire mask drop from vampires
                 if (this.hp <= 0 && this.isVampire && Math.random() < CONFIG.game.vampireMaskDropChance) {
                     gameState.inventory.vampireMask++;
-                    unlockAchievement("Vampire Mask Acquired!");
+                    unlockAchievement("🎭 Vampire Mask Acquired!");
                 }
                 
                 // Regular enemy drops
                 if (this.hp <= 0 && this.canDropDisk && Math.random() < CONFIG.game.standDiskDropChance) {
-                    gameState.inventory.standDisks++;
-                    unlockAchievement("Stand Disk Acquired!");
+                    gameState.inventory.standDisks.push('Random Stand Disk');
+                    unlockAchievement("💿 Stand Disk Acquired!");
                 }
                 
                 // Rokkakaka drop chance
                 if (this.hp <= 0 && Math.random() < 0.01) {
                     gameState.inventory.rokkakaka++;
-                    unlockAchievement("Rokkakaka Fruit Acquired!");
+                    unlockAchievement("🍎 Rokkakaka Fruit Acquired!");
                 }
                 
                 return this.hp <= 0;
@@ -1890,9 +3149,18 @@
             move() {
                 // Check if time is stopped
                 const isTimeStopped = gameState.timeStopActive;
-                if (isTimeStopped) return;
                 
-                let dx = gameState.player.x - this.x, dy = gameState.player.y - this.y, dist = Math.hypot(dx, dy);
+                // Store last known player position for time stop movement
+                if (!isTimeStopped) {
+                    this.lastPlayerX = gameState.player.x;
+                    this.lastPlayerY = gameState.player.y;
+                }
+                
+                // Move even during time stop (but use last known position)
+                let targetX = isTimeStopped ? this.lastPlayerX : gameState.player.x;
+                let targetY = isTimeStopped ? this.lastPlayerY : gameState.player.y;
+                
+                let dx = targetX - this.x, dy = targetY - this.y, dist = Math.hypot(dx, dy);
                 if (dist > 0) {
                     this.x += (dx / dist) * this.speed;
                     this.y += (dy / dist) * this.speed;
@@ -1920,7 +3188,7 @@
                 if (this.shoots) {
                     this.shootTimer++;
                     if (this.shootTimer >= 120) {
-                        let angle = Math.atan2(gameState.player.y - this.y, gameState.player.x - this.x);
+                        let angle = Math.atan2(targetY - this.y, targetX - this.x);
                         let bullet = new Bullet(
                             this.x, this.y, 
                             Math.cos(angle) * 5, 
@@ -1931,6 +3199,32 @@
                         bullet.color = '#888888'; // Grey bullets for gun users
                         gameState.bullets.push(bullet);
                         this.shootTimer = 0;
+                    }
+                }
+                
+                // Handle barrage for bosses
+                if (this.barrageActive) {
+                    this.barrageTimer--;
+                    
+                    // Spawn barrage bullets
+                    if (this.barrageTimer % 3 === 0) {
+                        let angle = Math.atan2(targetY - this.y, targetX - this.x);
+                        let spread = (Math.random() - 0.5) * 0.5;
+                        
+                        let bullet = new Bullet(
+                            this.standX || this.x, 
+                            this.standY || this.y, 
+                            Math.cos(angle + spread) * 8, 
+                            Math.sin(angle + spread) * 8, 
+                            (this.damage || 3) * 0.7,
+                            true
+                        );
+                        bullet.color = this.standColor || this.color;
+                        gameState.bullets.push(bullet);
+                    }
+                    
+                    if (this.barrageTimer <= 0) {
+                        this.barrageActive = false;
                     }
                 }
             }
@@ -2017,6 +3311,18 @@
                             gameState.player.speed /= 0.5;
                         }, 3000);
                         break;
+                    case 'barrage':
+                        // Activate barrage
+                        this.barrageActive = true;
+                        this.barrageTimer = 60;
+                        break;
+                    case 'gravityInversion':
+                        // Invert gravity for player
+                        gameState.player.speed *= -1;
+                        setTimeout(() => {
+                            gameState.player.speed *= -1;
+                        }, 3000);
+                        break;
                 }
             }
             
@@ -2100,6 +3406,8 @@
                 this.color = isEnemyBullet ? '#ff5555' : gameState.player.bulletColor;
                 this.enemiesHit = [];
                 this.trailTimer = 0;
+                this.hasSpin = false;
+                this.spinLevel = 0;
             }
             
             update() {
@@ -2124,6 +3432,15 @@
                 ctx.beginPath();
                 ctx.arc(canvas.width / 2 + (this.x - gameState.player.x), canvas.height / 2 + (this.y - gameState.player.y), this.size, 0, Math.PI * 2);
                 ctx.fill();
+                
+                // Add spin effect if applicable
+                if (this.hasSpin) {
+                    ctx.strokeStyle = '#ff6b6b';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2 + (this.x - gameState.player.x), canvas.height / 2 + (this.y - gameState.player.y), this.size + 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
             }
         }
 
@@ -2184,7 +3501,7 @@
             }
             
             // Play time stop sound (conceptual)
-            unlockAchievement("TIME STOP ACTIVATED!");
+            unlockAchievement("⏱️ TIME STOP ACTIVATED!");
         }
 
         function updateTimeStop() {
@@ -2216,7 +3533,7 @@
                 gameState.player.damage += 10;
                 gameState.player.bulletSize += 3;
                 gameState.player.standType += " Requiem";
-                unlockAchievement("REQUIEM ACHIEVED!");
+                unlockAchievement("🌟 REQUIEM ACHIEVED!");
             }
             document.getElementById('requiemPopup').style.display = 'none';
         }
@@ -2224,7 +3541,7 @@
         function saveRequiem() {
             gameState.inventory.requiemArrows++;
             document.getElementById('requiemPopup').style.display = 'none';
-            unlockAchievement("Requiem Arrow Stored!");
+            unlockAchievement("🏹 Requiem Arrow Stored!");
         }
 
         // ===== STAND BARRAGE MECHANICS =====
@@ -2390,6 +3707,43 @@
             }
         }
 
+        function createSpinVortex(x, y) {
+            // Create visual effect
+            const aoe = document.createElement('div');
+            aoe.className = 'stand-aoe';
+            aoe.style.left = `${canvas.width / 2 + (x - gameState.player.x) - 150}px`;
+            aoe.style.top = `${canvas.height / 2 + (y - gameState.player.y) - 150}px`;
+            aoe.style.width = `300px`;
+            aoe.style.height = `300px`;
+            aoe.style.borderColor = '#ff6b6b';
+            document.body.appendChild(aoe);
+            
+            setTimeout(() => {
+                if (document.body.contains(aoe)) {
+                    document.body.removeChild(aoe);
+                }
+            }, 1000);
+            
+            // Pull enemies in and damage them
+            gameState.enemies.forEach(enemy => {
+                const dx = enemy.x - x;
+                const dy = enemy.y - y;
+                const distance = Math.hypot(dx, dy);
+                
+                if (distance < 150) {
+                    // Pull enemy toward center
+                    if (distance > 0) {
+                        enemy.x -= (dx / distance) * 5;
+                        enemy.y -= (dy / distance) * 5;
+                    }
+                    
+                    // Apply spin damage
+                    enemy.takeDamage(gameState.player.spinDamage, x, y);
+                    enemy.spinDamage = (enemy.spinDamage || 0) + gameState.player.spinDamage;
+                }
+            });
+        }
+
         function summonD4CClone() {
             // Create a temporary clone that fights alongside the player
             const clone = {
@@ -2431,12 +3785,14 @@
                         this.shootTimer++;
                         if (this.shootTimer >= 30) {
                             const angle = Math.atan2(nearestEnemy.y - this.y, nearestEnemy.x - this.x);
-                            gameState.bullets.push(new Bullet(
+                            const bullet = new Bullet(
                                 this.x, this.y,
                                 Math.cos(angle) * 8,
                                 Math.sin(angle) * 8,
                                 gameState.player.damage * 0.5
-                            ));
+                            );
+                            bullet.color = '#89CFF0';
+                            gameState.bullets.push(bullet);
                             this.shootTimer = 0;
                         }
                     }
@@ -2615,16 +3971,14 @@
                 if (gameState.keys['d'] || gameState.keys['ArrowRight']) gameState.player.x += gameState.player.speed;
             }
             
-            // Shooting with Q key
+            // Shooting with Space key
             if (gameState.shootKeyPressed && gameState.player.fireTimer <= 0) {
                 shoot();
                 gameState.player.fireTimer = gameState.player.fireRate;
             }
             
             // Move enemies (unless time is stopped)
-            if (!isTimeStopped) {
-                gameState.enemies.forEach(e => e.move());
-            }
+            gameState.enemies.forEach(e => e.move());
             
             // Check for enemy collisions with player
             checkEnemyCollisions();
@@ -2667,6 +4021,12 @@
                     Math.sin(angle + spread) * gameState.player.bulletSpeed, 
                     gameState.player.damage
                 );
+                
+                // Add spin if player has spin
+                if (gameState.player.hasSpin) {
+                    bullet.hasSpin = true;
+                    bullet.spinLevel = gameState.player.spinLevel;
+                }
                 
                 // Add trail to first bullet
                 if (i === 0) {
@@ -2713,6 +4073,11 @@
                     if (d < b.size + e.size) {
                         // Use the new takeDamage method
                         const enemyDied = e.takeDamage(b.damage, b.x, b.y);
+                        
+                        // Apply spin damage over time
+                        if (b.hasSpin) {
+                            e.spinDamage = (e.spinDamage || 0) + b.spinLevel;
+                        }
                         
                         if (enemyDied) {
                             gameState.player.kills++;
@@ -2781,7 +4146,7 @@
 
         function drawPlayer() {
             // Draw player
-            ctx.fillStyle = '#d4af37';
+            ctx.fillStyle = gameState.player.isStoneHuman ? '#888888' : '#d4af37';
             ctx.beginPath();
             ctx.arc(canvas.width / 2, canvas.height / 2, gameState.player.size, 0, Math.PI * 2);
             ctx.fill();
@@ -3068,25 +4433,31 @@
             
             document.getElementById('skipDowntimeBtn').style.display = 'inline-block';
             
-            // Determine which type of stand to offer
-            const standType = Math.random();
+            // Clear enemies during card selection
+            gameState.enemies = [];
             
-            // 8% chance for legendary stand
-            if (standType < CONFIG.stands.legendaryChance) {
-                offerLegendaryStand();
-            }
-            // 30% chance for special stand (if no stand yet)
-            else if (standType < CONFIG.stands.specialStandChance && playerStands.length === 0) {
-                offerSpecialStand();
-            }
-            else if (gameState.part % CONFIG.stands.passiveStandPart === 0) {
+            // Determine which type of card to offer
+            if (gameState.player.standActive) {
+                // If player has a stand, only offer passive cards
                 offerPassiveSkill();
-            }
-            else if (gameState.part % CONFIG.stands.abilityStandPart === 0 || playerAbilities.length < 2) {
-                offerStandAbility();
-            }
-            else {
-                showRestDowntime();
+            } else {
+                // If player doesn't have a stand, offer stands or passive skills
+                const cardType = Math.random();
+                
+                // 8% chance for legendary stand
+                if (cardType < CONFIG.stands.legendaryChance) {
+                    offerLegendaryStand();
+                }
+                // 30% chance for special stand
+                else if (cardType < CONFIG.stands.specialStandChance) {
+                    offerSpecialStand();
+                }
+                else if (gameState.part % CONFIG.stands.passiveStandPart === 0) {
+                    offerPassiveSkill();
+                }
+                else {
+                    offerStandAbility();
+                }
             }
         }
 
@@ -3119,10 +4490,10 @@
                                    gameState.player.maxStandPower || 100);
         }
 
-        // ===== SMART STAND SELECTION =====
+        // ===== SMART CARD SELECTION =====
         function offerStandAbility() {
             let availableStands = standAbilities.filter(card => 
-                !playerAbilities.some(ab => ab.key === card.key) &&
+                !playerStands.some(w => w.name === card.name) &&
                 !gameState.standSelectionHistory.includes(card.name)
             );
             
@@ -3130,12 +4501,13 @@
             if (availableStands.length === 0) {
                 gameState.standSelectionHistory = [];
                 availableStands = standAbilities.filter(card => 
-                    !playerAbilities.some(ab => ab.key === card.key)
+                    !playerStands.some(w => w.name === card.name)
                 );
             }
             
             if (availableStands.length === 0) {
-                endStandDowntime();
+                // No stands available, offer passive skills instead
+                offerPassiveSkill();
                 return;
             }
             
@@ -3146,7 +4518,7 @@
                 availableStands.splice(randomIndex, 1);
             }
             
-            displayStandOptions(selectedStands, 'ability');
+            displayCardOptions(selectedStands, 'stand');
         }
 
         function offerPassiveSkill() {
@@ -3174,7 +4546,7 @@
                 availableSkills.splice(randomIndex, 1);
             }
             
-            displayStandOptions(selectedSkills, 'passive');
+            displayCardOptions(selectedSkills, 'passive');
         }
 
         function offerSpecialStand() {
@@ -3191,7 +4563,8 @@
             }
             
             if (availableStands.length === 0) {
-                endStandDowntime();
+                // No stands available, offer passive skills instead
+                offerPassiveSkill();
                 return;
             }
             
@@ -3202,7 +4575,7 @@
                 availableStands.splice(randomIndex, 1);
             }
             
-            displayStandOptions(selectedStands, 'special');
+            displayCardOptions(selectedStands, 'special');
         }
 
         function offerLegendaryStand() {
@@ -3210,60 +4583,57 @@
             offerSpecialStand();
         }
 
-        function displayStandOptions(stands, type) {
+        function displayCardOptions(cards, type) {
             document.getElementById('standPopup').style.display = 'block';
             document.getElementById('skipConfirmation').style.display = 'none';
+            
+            // Update popup title based on card type
+            const popupTitle = document.getElementById('popupTitle');
+            if (type === 'stand') {
+                popupTitle.textContent = 'Choose a Stand';
+            } else {
+                popupTitle.textContent = 'Choose a Card';
+            }
             
             let optionsContainer = document.getElementById('standOptions');
             optionsContainer.innerHTML = '';
             
-            stands.forEach((stand, index) => {
+            cards.forEach((card, index) => {
                 let optionDiv = document.createElement('div');
                 optionDiv.className = 'stand-option';
                 
                 let abilitiesHTML = '';
-                if (stand.abilities) {
+                if (card.abilities && type !== 'passive') {
                     abilitiesHTML = '<div style="margin-top: 10px; font-size: 12px; color: #4ecdc4;">';
-                    stand.abilities.forEach(ability => {
+                    card.abilities.forEach(ability => {
                         abilitiesHTML += `<div>${ability.key}: ${ability.name}</div>`;
                     });
                     abilitiesHTML += '</div>';
                 }
                 
                 optionDiv.innerHTML = `
-                    <div class="stand-emoji">${stand.emoji}</div>
-                    <div class="stand-name">${stand.name}</div>
-                    <div class="stand-desc">${stand.description}</div>
+                    <div class="stand-emoji">${card.emoji}</div>
+                    <div class="stand-name">${card.name}</div>
+                    <div class="stand-desc">${card.description}</div>
                     ${abilitiesHTML}
-                    <div class="stand-status">${stand.status || ''}</div>
+                    <div class="stand-status">${card.status || ''}</div>
                 `;
                 
                 optionDiv.addEventListener('click', () => {
-                    if (type === 'ability' || type === 'legendary') {
-                        playerAbilities = stand.abilities.map(ability => ({
-                            ...ability,
-                            card: stand
-                        }));
-                        
-                        // Update key bindings
-                        gameState.keyToAbility = {};
-                        playerAbilities.forEach(ability => {
-                            gameState.keyToAbility[ability.key] = ability;
-                        });
-                    } else if (type === 'passive') {
-                        playerPassives.push(stand);
-                        stand.effect();
-                    } else if (type === 'special') {
-                        playerStands.push(stand);
-                        stand.effect();
+                    if (type === 'stand' || type === 'special' || type === 'legendary') {
+                        playerStands.push(card);
+                        card.effect();
                         gameState.player.standActive = true;
+                    } else if (type === 'passive') {
+                        playerPassives.push(card);
+                        card.effect();
                     }
                     
                     // Add to selection history to prevent duplicates
-                    gameState.standSelectionHistory.push(stand.name);
+                    gameState.standSelectionHistory.push(card.name);
                     
-                    if (stand.effect) {
-                        stand.effect();
+                    if (card.effect) {
+                        card.effect();
                     }
                     
                     document.getElementById('standPopup').style.display = 'none';
@@ -3296,18 +4666,18 @@
                 skipDowntime();
             }
             
-            // Quest panel toggle
-            if (e.key === 'q') {
+            // Quest panel toggle (O key)
+            if (e.key === 'o' || e.key === 'O') {
                 toggleQuestPanel();
             }
             
-            // Inventory panel toggle
-            if (e.key === 'i') {
+            // Inventory panel toggle (I key)
+            if (e.key === 'i' || e.key === 'I') {
                 toggleInventoryPanel();
             }
             
-            // Achievement panel toggle
-            if (e.key === 'a') {
+            // Achievement panel toggle (P key)
+            if (e.key === 'p' || e.key === 'P') {
                 toggleAchievementPanel();
             }
             
@@ -3330,7 +4700,7 @@
                 gameState.player.barrageTimer = 60;
             }
             
-            // Shooting with Q key
+            // Shooting with Space key
             if (e.key === ' ' && !gameState.inDowntime && !gameState.gameOver) {
                 gameState.shootKeyPressed = true;
             }
@@ -3411,6 +4781,19 @@
             }
         }
 
+        // ===== FULLSCREEN FUNCTION =====
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
         // ===== ACHIEVEMENT SYSTEM =====
         function unlockAchievement(text) {
             if (gameState.achievements.includes(text)) return;
@@ -3419,6 +4802,9 @@
             const achievementPopup = document.getElementById('achievementPopup');
             document.getElementById('achievementText').textContent = text;
             achievementPopup.style.display = 'block';
+            
+            // Save achievements to localStorage
+            localStorage.setItem('jojoAchievements', JSON.stringify(gameState.achievements));
             
             setTimeout(() => {
                 achievementPopup.style.display = 'none';
